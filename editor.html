@@ -1,0 +1,35 @@
+<html>
+  <head>
+    <title>editor</title>
+    <script type="text/javascript">
+      WebFontConfig = {
+        google: { families: [ 'Source+Code+Pro::latin' ] }
+      };
+      (function() {
+        var wf = document.createElement('script');
+        wf.src = ('https:' == document.location.protocol ? 'https' : 'http') +
+          '://ajax.googleapis.com/ajax/libs/webfont/1/webfont.js';
+        wf.type = 'text/javascript';
+        wf.async = 'true';
+        var s = document.getElementsByTagName('script')[0];
+        s.parentNode.insertBefore(wf, s);
+      })();
+    </script>
+    <style type="text/css">
+      .wf-loading #content-area {
+        font-family: monospace
+      }
+      .wf-inactive #content-area {
+        font-family: monospace
+      }
+      .wf-active #content-area {
+        font-family: 'Source+Code+Pro::latin', monospace
+      }
+    </style>
+    <script type="text/javascript" src="./editor.js"></script>
+  </head>
+  <body>
+    <div id="content-area">
+    </div>
+  </body>
+</html>
