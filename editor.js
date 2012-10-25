@@ -40,20 +40,60 @@ function parseText(contents) {
 
 function onFileLoaded(contents) {
     var contentArea = $('content-area');
+    while (contentArea.firstChild)
+        contentArea.removeChild(contentArea.firstChild);
     var tokens = parseText(contents);
     for (var i = 0; i < tokens.length; i++) {
         var token = tokens[i];
+        var tokenElement;
         if (token == '\n') {
-            contentArea.appendChild(document.createElement('br'));
+            tokenElement = document.createElement('br');
         } else if (token == ' ') {
-            var span = document.createElement('span');
-            span.textContent = String.fromCharCode(0xA0);
-            contentArea.appendChild(span);
+            tokenElement = document.createElement('span');
+            tokenElement.textContent = String.fromCharCode(0xA0);
         } else {
-            var span = document.createElement('span');
-            span.textContent = token;
-            contentArea.appendChild(span);
+            tokenElement = document.createElement('span');
+            tokenElement.textContent = token;
         }
+        contentArea.appendChild(tokenElement);
+    }
+    createEventReceiver();
+}
+
+var caret = {
+    position: null,
+    targetToken: null,
+    offsetInToken: null,
+    eventReceiver: null,
+    caretIndicator: null
+};
+
+function insertTokenInto(element) {
+    if (caret.offsetInToken == 0) {
+        $('content-area').insertBefore(element, caret.targetToken);
+    } else if (caret.offsetInToken == caret.targetToken.textContent.length){
+        $('content-area').insertAfter(element, caret.targetToken);
+        caret.targetToken = element.nextSibling;
+        caret.offsetInToken = 0;
+    } else {
+        var tokenText = caret.targetToken.textContent;
+        var tokenBefore = document.createElement('span');
+        var tokenAfter = document.createElement('span');
+        tokenBefore.textContent = tokenText.substring(0, caret.offsetInToken);
+        tokenAfter.textContent = tokenText.substring(caret.offsetInToken);
+        var insertPoint = caret.targetToken.nextSibling;
+        $('content-area').removeChild(caret.targetToken);
+        if (insertPoint != null) {
+            $('content-area').insertBefore(tokenBefore, insertPoint);
+            $('content-area').insertBefore(element, insertPoint);
+            $('content-area').insertBefore(tokenAfter, insertPoint);
+        } else {
+            $('content-area').appendChild(tokenBefore);
+            $('content-area').appendChild(element);
+            $('content-area').appendChild(tokenAfter);
+        }
+        caret.targetToken = tokenAfter;
+        caret.offsetInToken = 0;
     }
 }
 
@@ -87,23 +127,69 @@ function onKeyDown(receiver, ev) {
 
     var consumed = false;
     if (key != null) {
-        var dataArea = $('data-area');
-        if (!dataArea) {
-            dataArea = document.createElement('span');
-            dataArea.id = 'data-area';
-            var content = $('content-area');
-            content.insertBefore(dataArea, content.firstChild);
-        }
         switch (key) {
+        case ' ':
+            var space = document.createElement('span');
+            space.textContent = String.fromCharCode(0xA0);
+            insertTokenInto(space);
+            caret.position += 1;
+            break;
         case 'Backspace':
         case 'Delete':
-            if (dataArea.textContent.length > 0)
-                dataArea.textContent = dataArea.textContent.substring(0, dataArea.textContent.length - 1);
+            function removeToken(elem) {
+                caret.targetToken = elem.previousSibling;
+                if (caret.targetToken == null) {
+                    caret.targetToken = $('content-area').firstChild;
+                    caret.offsetInToken = 0;
+                } else {
+                    caret.offsetInToken = caret.targetToken.textContent.length;
+                }
+                $('content-area').removeChild(elem);
+            }
+            if (caret.offsetInToken == 0) {
+                if (caret.targetToken == $('content-area').firstChild)
+                    break;
+                caret.targetToken = caret.targetToken.previousSibling;
+                if (caret.targetToken.tagName == 'BR') {
+                    removeToken(caret.targetToken);
+                    break;
+                } else {
+                    caret.offsetInToken = caret.targetToken.textContent.length;
+                }
+            }
+            var text = caret.targetToken.textContent;
+            if (text.length == 1) {
+                removeToken(caret.targetToken);
+                caret.offsetInToken = caret.targetToken.textContent.length;
+            } else {
+                text = text.substring(0, caret.offsetInToken - 1) + text.substring(caret.offsetInToken);
+                caret.targetToken.textContent = text;
+                caret.offsetInToken -= 1;
+            }
+            caret.position -= 1;
             consumed = true;
             break;
+        case 'Enter':
+            insertTokenInto(document.createElement('br'));
+            caret.position += 1;
+            break;
         default:
-            if (key.length == 1 && !ev.ctrlKey && !ev.altKey)
-                dataArea.textContent += key;
+            if (key.length == 1 && !ev.ctrlKey && !ev.altKey) {
+                if (caret.targetToken.tagName == 'BR' || caret.targetToken.textContent == '\xA0') {
+                    var span = document.createElement('span');
+                    span.textContent = key;
+                    $('content-area').insertBefore(span, caret.targetToken);
+                    caret.position += 1;
+                    caret.targetToken = span;
+                    caret.offsetInToken = 1;
+                } else {
+                    var text = caret.targetToken.textContent;
+                    var newText = text.substring(0, caret.offsetInToken) + key + text.substring(caret.offsetInToken);
+                    caret.targetToken.textContent = newText;
+                    caret.position += 1;
+                    caret.offsetInToken += 1;
+                }
+            }
             consumed = true;
             break;
         }
@@ -138,25 +224,23 @@ function createEventReceiver() {
         receiver.style.zIndex = '2';
     });
     receiver.addEventListener('compositionend', function(ev) {
+        // TODO: re-implement this.
         receiver.style.zIndex = '-1';
-        var dataArea = $('data-area');
-        if (!dataArea) {
-            dataArea = document.createElement('span');
-            dataArea.id = 'data-area';
-            var content = $('content-area');
-            content.insertBefore(dataArea, content.firstChild);
-        }
-        dataArea.textContent += ev.data;
+        console.log(ev.data);
         receiver.textContent = '';
         receiver.incomposition = false;
     });
     receiver.onblur = function() { receiver.focus(); };
-    $('content-area').insertBefore(receiver, $('content-area').firstChild);
+    $('content-area').appendChild(receiver);
     receiver.focus();
+
+    caret.position = 0;
+    caret.targetToken = $('content-area').firstChild;
+    caret.offsetInToken = 0;
+    caret.eventReceiver = receiver;
 }
 
 function windowOnLoad() {
-    createEventReceiver();
     loadFile('/editor/main.py', onFileLoaded);
 }
 
