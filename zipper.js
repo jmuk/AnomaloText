@@ -11,6 +11,18 @@ Zipper.prototype.current = function() {
     return this.back[this.back.length - 1];
 };
 
+Zipper.prototype.previous = function() {
+    if (this.front.length == 0)
+	return null;
+    return this.front[this.front.length - 1];
+};
+
+Zipper.prototype.next = function() {
+    if (this.back.length < 2)
+	return null;
+    return this.back[this.back.length - 2];
+}
+
 Zipper.prototype.forward = function() {
     if (this.back.length == 0)
 	return false;

@@ -40,7 +40,6 @@ function onFileLoaded(contents) {
 }
 
 var caret = {
-    position: null,
     tokens: null,
     offsetInToken: null,
     eventReceiver: null,
@@ -82,15 +81,31 @@ function insertTokenInto(token) {
 
 function updateCaretIndicator() {
     var token = caret.tokens.current();
-    if (token.isReturn)
-        return;
-    var element = token.element;
     var indicator = caret.caretIndicator;
-    indicator.style.top = element.offsetTop + 'px';
-    var left = element.offsetLeft;
-    if (token.length > 0)
-        left += element.offsetWidth * caret.offsetInToken / token.length;
-    indicator.style.left = left + 'px';
+    if (token.isReturn) {
+        var i = caret.tokens.front.length - 1;
+        if (!caret.tokens.front[i].isReturn) {
+            caret.tokens.backward();
+            caret.offsetInToken = caret.tokens.current().length;
+        } else {
+            while (caret.tokens.front[i].isReturn)
+                i--;
+            indicator.style.left = '0';
+            var count = caret.tokens.front.length -1 -  i;
+            console.log(count);
+            console.log(caret.tokens);
+            var top = caret.tokens.front[i].element.offsetTop;
+            top += caret.tokens.front[i].element.offsetHeight * count;
+            indicator.style.top = top + 'px';
+        }
+    } else {
+        var element = token.element;
+        indicator.style.top = element.offsetTop + 'px';
+        var left = element.offsetLeft;
+        if (token.length > 0)
+            left += element.offsetWidth * caret.offsetInToken / token.length;
+        indicator.style.left = left + 'px';
+    }
 }
 
 function onKeyDown(receiver, ev) {
@@ -127,7 +142,6 @@ function onKeyDown(receiver, ev) {
         switch (key) {
         case ' ':
             insertTokenInto(new Token(' '));
-            caret.position += 1;
             break;
         case 'Backspace':
         case 'Delete':
@@ -144,48 +158,47 @@ function onKeyDown(receiver, ev) {
                 current.setText(text);
                 caret.offsetInToken -= 1;
             }
-            caret.position -= 1;
             consumed = true;
             break;
         case 'Left':
-            if (caret.offsetInToken > 0) {
+            if (!current.isReturn && caret.offsetInToken > 0) {
                 caret.offsetInToken -= 1;
-                caret.position -= 1;
             } else if (caret.tokens.backward()) {
-                var offsetDecr = 1;
-                if (caret.tokens.current().isReturn) {
+                if (caret.tokens.current().isReturn &&
+                    !caret.tokens.previous().isReturn) {
                     caret.tokens.backward();
-                    offsetDecr = 0;
+                    caret.offsetInToken = caret.tokens.current().length;
+                } else {
+                    caret.offsetInToken = caret.tokens.current().length - 1;
+                    if (caret.offsetInToken < 0)
+                        caret.offsetInToken = 0;
                 }
-                caret.offsetInToken = caret.tokens.current().length - offsetDecr;
-                caret.position -= 1;
             }
             consumed = true;
             break;
         case 'Right':
             if (caret.offsetInToken < current.length) {
+                console.log(caret);
                 caret.offsetInToken += 1;
-                caret.position += 1;
             } else if (caret.tokens.forward()) {
-                var newOffset = 1;
-                if (caret.tokens.current().isReturn) {
+                if (current.isReturn) {
+                    caret.offsetInToken = 0;
+                } else if (caret.tokens.current().isReturn) {
                     caret.tokens.forward();
-                    newOffset = 0;
+                    caret.offsetInToken = 0;
+                } else {
+                    caret.offsetInToken = 1;
                 }
-                caret.offsetInToken = newOffset;
-                caret.position += 1;
             }
             consumed = true;
             break;
         case 'Enter':
             insertTokenInto(new Token('\n'));
-            caret.position += 1;
             break;
         default:
             if (key.length == 1 && !ev.ctrlKey && !ev.altKey) {
                 if (current.isSpecial) {
                     insertTokenInto(new Token(key));
-                    caret.position += 1;
                     caret.offsetInToken = 1;
                 } else {
                     var text = current.text;
@@ -193,7 +206,6 @@ function onKeyDown(receiver, ev) {
                         text.substring(caret.offsetInToken);
                     current.element.textContent = newText;
                     current.setText(newText);
-                    caret.position += 1;
                     caret.offsetInToken += 1;
                 }
             }
@@ -252,7 +264,6 @@ function createEventReceiver(tokens) {
     indicator.style.zIndex = '3';
     $('editor').appendChild(indicator);
 
-    caret.position = 0;
     caret.tokens = new Zipper(tokens);
     caret.offsetInToken = 0;
     caret.eventReceiver = receiver;
