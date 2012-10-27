@@ -15,23 +15,13 @@ function loadFile(filename, callback) {
 
 function parseText(contents) {
     var result = [];
-    var linebreakRE = /^[\n\r]/;
-    var spaceRE = /^\s/;
-    var otherRE = /^\S+/;
-    var res = [linebreakRE, spaceRE, otherRE];
     while (contents.length > 0) {
-        var noMatch = true;
-        for (var j = 0; j < res.length; j++) {
-            var matched = res[j].exec(contents);
-            if (matched) {
-                result.push(matched[0]);
-                contents = contents.substring(matched[0].length);
-                noMatch = false;
-                break;
-            }
-        }
-        if (noMatch) {
-            result.push(contents[0]);
+        var token = Token.getToken(contents);
+        if (token[0]) {
+            result.push(token[0]);
+            contents = token[1];
+        } else {
+            result.push(new Token(contents[0]));
             contents = contents.substring(1);
         }
     }
@@ -44,67 +34,62 @@ function onFileLoaded(contents) {
         contentArea.removeChild(contentArea.firstChild);
     var tokens = parseText(contents);
     for (var i = 0; i < tokens.length; i++) {
-        var token = tokens[i];
-        var tokenElement;
-        if (token == '\n') {
-            tokenElement = document.createElement('br');
-        } else if (token == ' ') {
-            tokenElement = document.createElement('span');
-            tokenElement.textContent = String.fromCharCode(0xA0);
-        } else {
-            tokenElement = document.createElement('span');
-            tokenElement.textContent = token;
-        }
-        contentArea.appendChild(tokenElement);
+        contentArea.appendChild(tokens[i].element);
     }
-    createEventReceiver();
+    createEventReceiver(tokens);
 }
 
 var caret = {
     position: null,
-    targetToken: null,
+    tokens: null,
     offsetInToken: null,
     eventReceiver: null,
     caretIndicator: null
 };
 
-function insertTokenInto(element) {
+function insertTokenInto(token) {
+    var contentArea = caret.tokens.current().element.parentNode;
+    var current = caret.tokens.current();
     if (caret.offsetInToken == 0) {
-        $('content-area').insertBefore(element, caret.targetToken);
-    } else if (caret.offsetInToken == caret.targetToken.textContent.length){
-        $('content-area').insertAfter(element, caret.targetToken);
-        caret.targetToken = element.nextSibling;
+        contentArea.insertBefore(token.element, current.element);
+        caret.tokens.insert(token);
+    } else if (caret.offsetInToken == caret.tokens.current().length) {
+        if (contentArea.lastChild == current.element) {
+            contentArea.appendChild(token.element);
+        } else {
+            contentArea.insertBefore(token.element, current.element.nextSibling);
+        }
+        caret.tokens.forward();
+        caret.tokens.insert(token);
+        caret.tokens.backward();
         caret.offsetInToken = 0;
     } else {
-        var tokenText = caret.targetToken.textContent;
-        var tokenBefore = document.createElement('span');
-        var tokenAfter = document.createElement('span');
-        tokenBefore.textContent = tokenText.substring(0, caret.offsetInToken);
-        tokenAfter.textContent = tokenText.substring(caret.offsetInToken);
-        var insertPoint = caret.targetToken.nextSibling;
-        $('content-area').removeChild(caret.targetToken);
-        if (insertPoint != null) {
-            $('content-area').insertBefore(tokenBefore, insertPoint);
-            $('content-area').insertBefore(element, insertPoint);
-            $('content-area').insertBefore(tokenAfter, insertPoint);
-        } else {
-            $('content-area').appendChild(tokenBefore);
-            $('content-area').appendChild(element);
-            $('content-area').appendChild(tokenAfter);
-        }
-        caret.targetToken = tokenAfter;
+        var tokenText = current.text;
+        var tokenBefore = new Token(tokenText.substring(0, caret.offsetInToken));
+        var tokenAfter = new Token(tokenText.substring(caret.offsetInToken));
+        contentArea.insertBefore(tokenBefore.element, current.element);
+        contentArea.insertBefore(token.element, current.element);
+        contentArea.insertBefore(tokenAfter.element, current.element);
+        contentArea.removeChild(current.element);
+        caret.tokens.remove();
+        caret.tokens.insert(tokenBefore);
+        caret.tokens.insert(token);
+        caret.tokens.insert(tokenAfter);
+        caret.tokens.backward();
         caret.offsetInToken = 0;
     }
 }
 
 function updateCaretIndicator() {
-    var token = caret.targetToken;
+    var token = caret.tokens.current();
+    if (token.isReturn)
+        return;
+    var element = token.element;
     var indicator = caret.caretIndicator;
-    indicator.style.height = token.offsetHeight + 'px';
-    indicator.style.top = token.offsetTop + 'px';
-    var left = token.offsetLeft;
-    if (token.tagName == 'SPAN')
-        left += token.offsetWidth * caret.offsetInToken / token.textContent.length;
+    indicator.style.top = element.offsetTop + 'px';
+    var left = element.offsetLeft;
+    if (token.length > 0)
+        left += element.offsetWidth * caret.offsetInToken / token.length;
     indicator.style.left = left + 'px';
 }
 
@@ -137,44 +122,26 @@ function onKeyDown(receiver, ev) {
         key = key.toUpperCase();
 
     var consumed = false;
+    var current = caret.tokens.current();
     if (key != null) {
         switch (key) {
         case ' ':
-            var space = document.createElement('span');
-            space.textContent = String.fromCharCode(0xA0);
-            insertTokenInto(space);
+            insertTokenInto(new Token(' '));
             caret.position += 1;
             break;
         case 'Backspace':
         case 'Delete':
-            function removeToken(elem) {
-                caret.targetToken = elem.previousSibling;
-                if (caret.targetToken == null) {
-                    caret.targetToken = $('content-area').firstChild;
-                    caret.offsetInToken = 0;
-                } else {
-                    caret.offsetInToken = caret.targetToken.textContent.length;
-                }
-                $('content-area').removeChild(elem);
-            }
-            if (caret.offsetInToken == 0) {
-                if (caret.targetToken == $('content-area').firstChild)
+            if (caret.offsetInToken == 0 || current.text.length == 1) {
+                if (!caret.tokens.backward())
                     break;
-                caret.targetToken = caret.targetToken.previousSibling;
-                if (caret.targetToken.tagName == 'BR') {
-                    removeToken(caret.targetToken);
-                    break;
-                } else {
-                    caret.offsetInToken = caret.targetToken.textContent.length;
-                }
-            }
-            var text = caret.targetToken.textContent;
-            if (text.length == 1) {
-                removeToken(caret.targetToken);
-                caret.offsetInToken = caret.targetToken.textContent.length;
+                current.element.parentNode.removeChild(current.element);
+                caret.tokens.remove();
+                caret.offsetInToken = caret.tokens.current().length;
             } else {
-                text = text.substring(0, caret.offsetInToken - 1) + text.substring(caret.offsetInToken);
-                caret.targetToken.textContent = text;
+                var text = current.text.substring(0, caret.offsetInToken - 1) +
+                    current.text.substring(caret.offsetInToken);
+                current.element.textContent = text;
+                current.setText(text);
                 caret.offsetInToken -= 1;
             }
             caret.position -= 1;
@@ -184,49 +151,48 @@ function onKeyDown(receiver, ev) {
             if (caret.offsetInToken > 0) {
                 caret.offsetInToken -= 1;
                 caret.position -= 1;
-            } else if (caret.targetToken.previousSibling) {
-                caret.targetToken = caret.targetToken.previousSibling;
-                caret.offsetInToken = caret.targetToken.textContent.length - 1;
+            } else if (caret.tokens.backward()) {
+                var offsetDecr = 1;
+                if (caret.tokens.current().isReturn) {
+                    caret.tokens.backward();
+                    offsetDecr = 0;
+                }
+                caret.offsetInToken = caret.tokens.current().length - offsetDecr;
                 caret.position -= 1;
             }
             consumed = true;
             break;
         case 'Right':
-            if (caret.offsetInToken < caret.targetToken.textContent.length) {
+            if (caret.offsetInToken < current.length) {
                 caret.offsetInToken += 1;
                 caret.position += 1;
-            } else {
-                var next = caret.targetToken.nextSibling;
+            } else if (caret.tokens.forward()) {
                 var newOffset = 1;
-                if (next && next.tagName == 'BR') {
-                    next = next.nextSibling;
+                if (caret.tokens.current().isReturn) {
+                    caret.tokens.forward();
                     newOffset = 0;
                 }
-                if (next) {
-                    caret.targetToken = next;
-                    caret.offsetInToken = newOffset;
-                    caret.position += 1;
-                }
+                caret.offsetInToken = newOffset;
+                caret.position += 1;
             }
             consumed = true;
             break;
         case 'Enter':
-            insertTokenInto(document.createElement('br'));
+            insertTokenInto(new Token('\n'));
             caret.position += 1;
             break;
         default:
             if (key.length == 1 && !ev.ctrlKey && !ev.altKey) {
-                if (caret.targetToken.tagName == 'BR' || caret.targetToken.textContent == '\xA0') {
-                    var span = document.createElement('span');
-                    span.textContent = key;
-                    $('content-area').insertBefore(span, caret.targetToken);
+                if (current.isSpecial) {
+                    insertTokenInto(new Token(key));
                     caret.position += 1;
-                    caret.targetToken = span;
                     caret.offsetInToken = 1;
                 } else {
-                    var text = caret.targetToken.textContent;
-                    var newText = text.substring(0, caret.offsetInToken) + key + text.substring(caret.offsetInToken);
-                    caret.targetToken.textContent = newText;
+                    var text = current.text;
+                    var newText = text.substring(0, caret.offsetInToken) + key +
+                        text.substring(caret.offsetInToken);
+                    current.element.textContent = newText;
+                    current.setText(newText);
                     caret.position += 1;
                     caret.offsetInToken += 1;
                 }
@@ -244,7 +210,7 @@ function onKeyDown(receiver, ev) {
  * Creates an invisible div which receives the key events and passes
  * it to the model.
  */
-function createEventReceiver() {
+function createEventReceiver(tokens) {
     var receiver = document.createElement('div');
     receiver.style.position = 'absolute';
     receiver.style.outline = '0';
@@ -287,7 +253,7 @@ function createEventReceiver() {
     $('editor').appendChild(indicator);
 
     caret.position = 0;
-    caret.targetToken = $('content-area').firstChild;
+    caret.tokens = new Zipper(tokens);
     caret.offsetInToken = 0;
     caret.eventReceiver = receiver;
     caret.caretIndicator = indicator;
