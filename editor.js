@@ -97,6 +97,17 @@ function insertTokenInto(element) {
     }
 }
 
+function updateCaretIndicator() {
+    var token = caret.targetToken;
+    var indicator = caret.caretIndicator;
+    indicator.style.height = token.offsetHeight + 'px';
+    indicator.style.top = token.offsetTop + 'px';
+    var left = token.offsetLeft;
+    if (token.tagName == 'SPAN')
+        left += token.offsetWidth * caret.offsetInToken / token.textContent.length;
+    indicator.style.left = left + 'px';
+}
+
 function onKeyDown(receiver, ev) {
     // see: https://github.com/jmuk/chrome-skk/blob/master/testpage/mock.js
     var keyMap = {
@@ -122,7 +133,7 @@ function onKeyDown(receiver, ev) {
 
     var key = (ev.shiftKey) ?
         (shiftKeyMap[ev.keyCode] || keyMap[ev.keyCode]) : keyMap[ev.keyCode];
-    if (ev.shiftKey && key.length == 1)
+    if (ev.shiftKey && key && key.length == 1)
         key = key.toUpperCase();
 
     var consumed = false;
@@ -169,6 +180,36 @@ function onKeyDown(receiver, ev) {
             caret.position -= 1;
             consumed = true;
             break;
+        case 'Left':
+            if (caret.offsetInToken > 0) {
+                caret.offsetInToken -= 1;
+                caret.position -= 1;
+            } else if (caret.targetToken.previousSibling) {
+                caret.targetToken = caret.targetToken.previousSibling;
+                caret.offsetInToken = caret.targetToken.textContent.length - 1;
+                caret.position -= 1;
+            }
+            consumed = true;
+            break;
+        case 'Right':
+            if (caret.offsetInToken < caret.targetToken.textContent.length) {
+                caret.offsetInToken += 1;
+                caret.position += 1;
+            } else {
+                var next = caret.targetToken.nextSibling;
+                var newOffset = 1;
+                if (next && next.tagName == 'BR') {
+                    next = next.nextSibling;
+                    newOffset = 0;
+                }
+                if (next) {
+                    caret.targetToken = next;
+                    caret.offsetInToken = newOffset;
+                    caret.position += 1;
+                }
+            }
+            consumed = true;
+            break;
         case 'Enter':
             insertTokenInto(document.createElement('br'));
             caret.position += 1;
@@ -195,6 +236,7 @@ function onKeyDown(receiver, ev) {
         }
     }
     receiver.textContent = '';
+    updateCaretIndicator();
     return consumed;
 }
 
@@ -206,7 +248,7 @@ function createEventReceiver() {
     var receiver = document.createElement('div');
     receiver.style.position = 'absolute';
     receiver.style.outline = '0';
-    receiver.style.zIndex = '-1';
+    receiver.style.zIndex = '-100';
     receiver.style.top = '0';
     receiver.style.left = '0';
     receiver.contentEditable = true;
@@ -231,13 +273,24 @@ function createEventReceiver() {
         receiver.incomposition = false;
     });
     receiver.onblur = function() { receiver.focus(); };
-    $('content-area').appendChild(receiver);
+    $('editor').appendChild(receiver);
     receiver.focus();
+
+    var indicator = document.createElement('div');
+    indicator.style.border = 'solid 1px';
+    indicator.style.width = '0';
+    indicator.style.height = $('content-area').firstChild.offsetHeight;
+    indicator.style.top = 0;
+    indicator.style.left = 0;
+    indicator.style.position = 'absolute';
+    indicator.style.zIndex = '3';
+    $('editor').appendChild(indicator);
 
     caret.position = 0;
     caret.targetToken = $('content-area').firstChild;
     caret.offsetInToken = 0;
     caret.eventReceiver = receiver;
+    caret.caretIndicator = indicator;
 }
 
 function windowOnLoad() {

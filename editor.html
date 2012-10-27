@@ -16,6 +16,9 @@
       })();
     </script>
     <style type="text/css">
+      #editor {
+        position: absolute;
+      }
       #content-area {
         position: absolute;
         z-index: 1;
@@ -33,7 +36,9 @@
     <script type="text/javascript" src="./editor.js"></script>
   </head>
   <body>
-    <div id="content-area">
+    <div id="editor">
+      <div id="content-area" style="background-color: white;">
+      </div>
     </div>
   </body>
 </html>
