@@ -92,8 +92,6 @@ function updateCaretIndicator() {
                 i--;
             indicator.style.left = '0';
             var count = caret.tokens.front.length -1 -  i;
-            console.log(count);
-            console.log(caret.tokens);
             var top = caret.tokens.front[i].element.offsetTop;
             top += caret.tokens.front[i].element.offsetHeight * count;
             indicator.style.top = top + 'px';
@@ -178,7 +176,6 @@ function onKeyDown(receiver, ev) {
             break;
         case 'Right':
             if (caret.offsetInToken < current.length) {
-                console.log(caret);
                 caret.offsetInToken += 1;
             } else if (caret.tokens.forward()) {
                 if (current.isReturn) {
@@ -188,6 +185,62 @@ function onKeyDown(receiver, ev) {
                     caret.offsetInToken = 0;
                 } else {
                     caret.offsetInToken = 1;
+                }
+            }
+            consumed = true;
+            break;
+        case 'Up':
+            var left = caret.caretIndicator.offsetLeft;
+            for (var i = caret.tokens.front.length - 1; i >= 0; i--) {
+                if (caret.tokens.front[i].isReturn) {
+                    break;
+                }
+            }
+            i--;
+            if (caret.tokens.front[i].isReturn) {
+                caret.tokens.jumpTo(i + 1);
+                caret.offsetInToken = 0;
+            } else {
+                for (; i >= 0 && !caret.tokens.front[i].isReturn; i--) {
+                    var token = caret.tokens.front[i];
+                    var element = token.element;
+                    if ((element.offsetLeft <= left)) {
+                        caret.tokens.jumpTo(i);
+                        caret.offsetInToken = Math.min(
+                            token.length,
+                            Math.floor(token.length * (left - element.offsetLeft) /
+                                       element.offsetWidth));
+                        break;
+                    }
+                }
+            }
+            consumed = true;
+            break;
+        case 'Down':
+            var left = caret.caretIndicator.offsetLeft;
+            for (var i = caret.tokens.back.length - 1; i >= 0; i--) {
+                if (caret.tokens.back[i].isReturn) {
+                    break;
+                }
+            }
+            i--;
+            var newPosition = caret.tokens.front.length +
+                caret.tokens.back.length - i - 1;
+            if (caret.tokens.back[i].isReturn) {
+                caret.tokens.jumpTo(newPosition);
+                caret.offsetInToken = 0;
+            } else {
+                for (; i >= 0 && !caret.tokens.back[i].isReturn; i--, newPosition++) {
+                    var token = caret.tokens.back[i];
+                    var element = token.element;
+                    if ((element.offsetLeft <= left)) {
+                        caret.tokens.jumpTo(newPosition);
+                        caret.offsetInToken = Math.min(
+                            token.length,
+                            Math.floor(token.length * (left - element.offsetLeft) /
+                                       element.offsetWidth));
+                        break;
+                    }
                 }
             }
             consumed = true;

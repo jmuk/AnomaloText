@@ -39,7 +39,7 @@ Token.prototype.setText = function(text) {
 	return;
     this.text = text;
     this.length = text.length;
-}
+};
 
 /**
  * Looks at |chunk| and obtain a valid token from the beginning.

@@ -37,6 +37,19 @@ Zipper.prototype.backward = function() {
     return true;
 };
 
+Zipper.prototype.jumpTo = function(i) {
+    if (this.front.length > i) {
+	i = Math.max(0, i);
+	while (this.front.length > i)
+	    this.backward();
+    } else {
+	i = i - this.front.length;
+	for (; i > 0 && this.back.length > 0; i--) {
+	    this.forward();
+	}
+    }
+};
+
 Zipper.prototype.insert = function(element) {
     this.front.push(element);
 };
@@ -61,4 +74,4 @@ Zipper.prototype.at = function(index) {
 
 Zipper.prototype.toList = function() {
     return this.front + this.back.reverse();
-}
+};
