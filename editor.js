@@ -43,6 +43,7 @@ var caret = {
     tokens: null,
     offsetInToken: null,
     eventReceiverContainer: null,
+    eventReceiverSpacer: null,
     caretIndicator: null
 };
 
@@ -86,7 +87,6 @@ function insertText(token, text) {
         tokens.push(result[0]);
         text = result[1];
     }
-    console.log(tokens);
 
     if (token.type != 'control' && token.type != 'space' &&
         tokens.length == 1 && tokens[0].type == token.type) {
@@ -129,13 +129,8 @@ function updateCaretIndicator() {
             left += element.offsetWidth * caret.offsetInToken / token.length;
         indicator.style.left = left + 'px';
     }
-    var receiver = caret.eventReceiverContainer;
-    receiver.style.top = indicator.style.top;
-    receiver.style.left = indicator.style.left;
-    receiver.style.width =
-        indicator.offsetParent.offsetWidth - indicator.offsetLeft + 'px';
-    receiver.style.width =
-        indicator.offsetParent.offsetWidth - indicator.offsetLeft + 'px';
+    caret.eventReceiverContainer.style.top = indicator.style.top;
+    caret.eventReceiverSpacer.style.width = indicator.style.left;
 }
 
 function onKeyDown(receiver, ev) {
@@ -312,6 +307,12 @@ function createEventReceiver(tokens) {
     receiverContainer.style.zIndex = '-1';
     receiverContainer.style.top = '0';
     receiverContainer.style.left = '0';
+    receiverContainer.style.width = '100%';
+    var receiverSpacer = document.createElement('div');
+    receiverSpacer.style.display = 'inline-block';
+    receiverSpacer.style.left = '0';
+    receiverSpacer.style.top = '0';
+    receiverContainer.appendChild(receiverSpacer);
     var receiver = document.createElement('span');
     receiver.style.outline = '0';
     receiver.style.backgroundColor = 'white';
@@ -352,6 +353,7 @@ function createEventReceiver(tokens) {
     caret.tokens = new Zipper(tokens);
     caret.offsetInToken = 0;
     caret.eventReceiverContainer = receiverContainer;
+    caret.eventReceiverSpacer = receiverSpacer;
     caret.caretIndicator = indicator;
 }
 
