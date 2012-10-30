@@ -42,7 +42,7 @@ function onFileLoaded(contents) {
 var caret = {
     tokens: null,
     offsetInToken: null,
-    eventReceiver: null,
+    eventReceiverContainer: null,
     caretIndicator: null
 };
 
@@ -61,7 +61,7 @@ function insertTokenInto(token) {
         caret.tokens.forward();
         caret.tokens.insert(token);
         caret.tokens.backward();
-        caret.offsetInToken = 0;
+        caret.offsetInToken = token.length;
     } else {
         var tokenText = current.text;
         var tokenBefore = new Token(tokenText.substring(0, caret.offsetInToken));
@@ -79,16 +79,41 @@ function insertTokenInto(token) {
     }
 }
 
+function insertText(token, text) {
+    var tokens = [];
+    while (text.length > 0) {
+        var result = Token.getToken(text);
+        tokens.push(result[0]);
+        text = result[1];
+    }
+    console.log(tokens);
+
+    if (token.type != 'control' && token.type != 'space' &&
+        tokens.length == 1 && tokens[0].type == token.type) {
+        text = tokens[0].text;
+        var curr = token.text;
+        var newText = curr.substring(0, caret.offsetInToken) + text +
+            curr.substring(caret.offsetInToken);
+        token.element.textContent = newText;
+        token.setText(newText);
+        caret.offsetInToken += text.length;
+    } else {
+        for (var i = 0; i < tokens.length; i++) {
+            insertTokenInto(tokens[i]);
+        }
+    }
+}
+
 function updateCaretIndicator() {
     var token = caret.tokens.current();
     var indicator = caret.caretIndicator;
-    if (token.isReturn) {
+    if (token.type == 'control') {
         var i = caret.tokens.front.length - 1;
-        if (!caret.tokens.front[i].isReturn) {
+        if (caret.tokens.front[i].type != 'control') {
             caret.tokens.backward();
             caret.offsetInToken = caret.tokens.current().length;
         } else {
-            while (caret.tokens.front[i].isReturn)
+            while (caret.tokens.front[i].type == 'control')
                 i--;
             indicator.style.left = '0';
             var count = caret.tokens.front.length -1 -  i;
@@ -104,6 +129,13 @@ function updateCaretIndicator() {
             left += element.offsetWidth * caret.offsetInToken / token.length;
         indicator.style.left = left + 'px';
     }
+    var receiver = caret.eventReceiverContainer;
+    receiver.style.top = indicator.style.top;
+    receiver.style.left = indicator.style.left;
+    receiver.style.width =
+        indicator.offsetParent.offsetWidth - indicator.offsetLeft + 'px';
+    receiver.style.width =
+        indicator.offsetParent.offsetWidth - indicator.offsetLeft + 'px';
 }
 
 function onKeyDown(receiver, ev) {
@@ -143,12 +175,22 @@ function onKeyDown(receiver, ev) {
             break;
         case 'Backspace':
         case 'Delete':
-            if (caret.offsetInToken == 0 || current.text.length == 1) {
+            consumed = true;
+            if (caret.offsetInToken == 0) {
                 if (!caret.tokens.backward())
                     break;
+                
+                current = caret.tokens.current();
+                caret.offsetInToken = current.length;
+            }
+            if (current.length <= 1) {
                 current.element.parentNode.removeChild(current.element);
                 caret.tokens.remove();
-                caret.offsetInToken = caret.tokens.current().length;
+                if (caret.tokens.backward()) {
+                    caret.offsetInToken = caret.tokens.current().length;
+                } else {
+                    caret.offsetInToken = 0;
+                }
             } else {
                 var text = current.text.substring(0, caret.offsetInToken - 1) +
                     current.text.substring(caret.offsetInToken);
@@ -159,11 +201,11 @@ function onKeyDown(receiver, ev) {
             consumed = true;
             break;
         case 'Left':
-            if (!current.isReturn && caret.offsetInToken > 0) {
+            if (current.type != 'control' && caret.offsetInToken > 0) {
                 caret.offsetInToken -= 1;
             } else if (caret.tokens.backward()) {
-                if (caret.tokens.current().isReturn &&
-                    !caret.tokens.previous().isReturn) {
+                if (caret.tokens.current().type == 'control' &&
+                    caret.tokens.previous().type != 'control') {
                     caret.tokens.backward();
                     caret.offsetInToken = caret.tokens.current().length;
                 } else {
@@ -178,9 +220,9 @@ function onKeyDown(receiver, ev) {
             if (caret.offsetInToken < current.length) {
                 caret.offsetInToken += 1;
             } else if (caret.tokens.forward()) {
-                if (current.isReturn) {
+                if (current.type == 'control') {
                     caret.offsetInToken = 0;
-                } else if (caret.tokens.current().isReturn) {
+                } else if (caret.tokens.current().type == 'control') {
                     caret.tokens.forward();
                     caret.offsetInToken = 0;
                 } else {
@@ -192,16 +234,16 @@ function onKeyDown(receiver, ev) {
         case 'Up':
             var left = caret.caretIndicator.offsetLeft;
             for (var i = caret.tokens.front.length - 1; i >= 0; i--) {
-                if (caret.tokens.front[i].isReturn) {
+                if (caret.tokens.front[i].isReturn()) {
                     break;
                 }
             }
             i--;
-            if (caret.tokens.front[i].isReturn) {
+            if (caret.tokens.front[i].isReturn()) {
                 caret.tokens.jumpTo(i + 1);
                 caret.offsetInToken = 0;
             } else {
-                for (; i >= 0 && !caret.tokens.front[i].isReturn; i--) {
+                for (; i >= 0 && !caret.tokens.front[i].isReturn(); i--) {
                     var token = caret.tokens.front[i];
                     var element = token.element;
                     if ((element.offsetLeft <= left)) {
@@ -219,18 +261,18 @@ function onKeyDown(receiver, ev) {
         case 'Down':
             var left = caret.caretIndicator.offsetLeft;
             for (var i = caret.tokens.back.length - 1; i >= 0; i--) {
-                if (caret.tokens.back[i].isReturn) {
+                if (caret.tokens.back[i].isReturn()) {
                     break;
                 }
             }
             i--;
             var newPosition = caret.tokens.front.length +
                 caret.tokens.back.length - i - 1;
-            if (caret.tokens.back[i].isReturn) {
+            if (caret.tokens.back[i].isReturn()) {
                 caret.tokens.jumpTo(newPosition);
                 caret.offsetInToken = 0;
             } else {
-                for (; i >= 0 && !caret.tokens.back[i].isReturn; i--, newPosition++) {
+                for (; i >= 0 && !caret.tokens.back[i].isReturn(); i--, newPosition++) {
                     var token = caret.tokens.back[i];
                     var element = token.element;
                     if ((element.offsetLeft <= left)) {
@@ -249,19 +291,8 @@ function onKeyDown(receiver, ev) {
             insertTokenInto(new Token('\n'));
             break;
         default:
-            if (key.length == 1 && !ev.ctrlKey && !ev.altKey) {
-                if (current.isSpecial) {
-                    insertTokenInto(new Token(key));
-                    caret.offsetInToken = 1;
-                } else {
-                    var text = current.text;
-                    var newText = text.substring(0, caret.offsetInToken) + key +
-                        text.substring(caret.offsetInToken);
-                    current.element.textContent = newText;
-                    current.setText(newText);
-                    caret.offsetInToken += 1;
-                }
-            }
+            if (key.length == 1 && !ev.ctrlKey && !ev.altKey)
+                insertText(current, key);
             consumed = true;
             break;
         }
@@ -276,14 +307,15 @@ function onKeyDown(receiver, ev) {
  * it to the model.
  */
 function createEventReceiver(tokens) {
-    var receiver = document.createElement('div');
-    receiver.style.position = 'absolute';
+    var receiverContainer = document.createElement('div');
+    receiverContainer.style.position = 'absolute';
+    receiverContainer.style.zIndex = '-1';
+    receiverContainer.style.top = '0';
+    receiverContainer.style.left = '0';
+    var receiver = document.createElement('span');
     receiver.style.outline = '0';
-    receiver.style.zIndex = '-100';
-    receiver.style.top = '0';
-    receiver.style.left = '0';
-    receiver.contentEditable = true;
     receiver.style.backgroundColor = 'white';
+    receiver.contentEditable = true;
     receiver.onkeydown = function(ev) {
         if (!receiver.incomposition && onKeyDown(receiver, ev)) {
             ev.preventDefault();
@@ -292,19 +324,19 @@ function createEventReceiver(tokens) {
         return true;
     };
     receiver.addEventListener('compositionstart', function(ev) {
-        console.log('compositionstart');
         receiver.incomposition = true;
-        receiver.style.zIndex = '2';
+        receiverContainer.style.zIndex = '2';
     });
     receiver.addEventListener('compositionend', function(ev) {
         // TODO: re-implement this.
-        receiver.style.zIndex = '-1';
-        console.log(ev.data);
+        receiverContainer.style.zIndex = '-1';
+        insertText(caret.tokens.current(), ev.data);
         receiver.textContent = '';
         receiver.incomposition = false;
     });
     receiver.onblur = function() { receiver.focus(); };
-    $('editor').appendChild(receiver);
+    receiverContainer.appendChild(receiver);
+    $('editor').appendChild(receiverContainer);
     receiver.focus();
 
     var indicator = document.createElement('div');
@@ -319,7 +351,7 @@ function createEventReceiver(tokens) {
 
     caret.tokens = new Zipper(tokens);
     caret.offsetInToken = 0;
-    caret.eventReceiver = receiver;
+    caret.eventReceiverContainer = receiverContainer;
     caret.caretIndicator = indicator;
 }
 
