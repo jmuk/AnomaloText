@@ -327,6 +327,7 @@ function createEventReceiver(tokens) {
     receiver.addEventListener('compositionstart', function(ev) {
         receiver.incomposition = true;
         receiverContainer.style.zIndex = '2';
+        caret.caretIndicator.style.visibility = 'hidden';
     });
     receiver.addEventListener('compositionend', function(ev) {
         // TODO: re-implement this.
@@ -334,8 +335,23 @@ function createEventReceiver(tokens) {
         insertText(caret.tokens.current(), ev.data);
         receiver.textContent = '';
         receiver.incomposition = false;
+        caret.caretIndicator.style.visibility = 'visible';
+        updateCaretIndicator();
     });
-    receiver.onblur = function() { receiver.focus(); };
+    receiver.onblur = function(ev) {
+        receiver.focus();
+        ev.preventDefault();
+    };
+    window.onclick = function(ev) {
+        receiver.focus();
+        var caret = document.createRange();
+        caret.setStart(receiver, 0);
+        caret.setEnd(receiver, 0);
+        var selection = window.getSelection();
+        selection.removeAllRanges();
+        selection.addRange(caret);
+    };
+    
     receiverContainer.appendChild(receiver);
     $('editor').appendChild(receiverContainer);
     receiver.focus();
