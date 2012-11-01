@@ -63,11 +63,11 @@ Zipper.prototype.remove = function() {
 
 Zipper.prototype.at = function(index) {
     if (index < this.front.length)
-	return front[index];
+	return this.front[index];
 
     index -= this.front.length;
     if (index < this.back.length)
-	return this.back[this.back.length - index];
+	return this.back[this.back.length - index - 1];
 
     return null;
 };

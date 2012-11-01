@@ -338,18 +338,53 @@ function createEventReceiver(tokens) {
         caret.caretIndicator.style.visibility = 'visible';
         updateCaretIndicator();
     });
-    receiver.onblur = function(ev) {
+    window.onmouseup = function(ev) {
         receiver.focus();
-        ev.preventDefault();
-    };
-    window.onclick = function(ev) {
-        receiver.focus();
-        var caret = document.createRange();
-        caret.setStart(receiver, 0);
-        caret.setEnd(receiver, 0);
+        var caretRange = document.createRange();
+        caretRange.setStart(receiver, 0);
+        caretRange.setEnd(receiver, 0);
         var selection = window.getSelection();
         selection.removeAllRanges();
-        selection.addRange(caret);
+        selection.addRange(caretRange);
+
+        var target = ev.target;
+        if (target.tagName != 'SPAN') {
+            // outside of characters.
+            var height = 0;
+            for (var i = 0; i < caret.tokens.length; i++) {
+                var token = caret.tokens.at(i);
+                if (token.element.tagName == 'SPAN') {
+                    height = token.element.offsetHeight;
+                    break;
+                }
+            }
+            if (height <= 0)
+                return;
+            numLines = Math.floor(ev.offsetY / height);
+            for (var i = 0; i < caret.tokens.length; i++) {
+                var token = caret.tokens.at(i);
+                if (token.type == 'control') {
+                    numLines--;
+                    if (numLines == 0)
+                        break;
+                }
+            }
+            i--;
+            caret.tokens.jumpTo(i);
+            caret.offsetInToken = caret.tokens.current().length;
+        } else {
+            for (var i = 0; i < caret.tokens.length; i++) {
+                var token = caret.tokens.at(i);
+                if (ev.target == token.element) {
+                    caret.tokens.jumpTo(i);
+                    var left = ev.offsetX - token.element.offsetLeft;
+                    caret.offsetInToken =
+                        Math.floor(left * token.length / token.element.offsetWidth);
+                    break;
+                }
+            }
+        }
+        updateCaretIndicator();
     };
     
     receiverContainer.appendChild(receiver);
