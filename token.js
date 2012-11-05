@@ -31,13 +31,14 @@ function Token(text, type) {
 
 Token.prototype.isReturn = function() {
     return this.element.tagName == 'BR';
-}
+};
 
 Token.prototype.setText = function(text) {
     if (this.isSpecial)
 	return;
     this.text = text;
     this.length = text.length;
+    this.element.textContent = text;
 };
 
 /**
