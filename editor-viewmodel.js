@@ -162,6 +162,32 @@ EditorViewModel.prototype.moveNextLine = function() {
 	Math.floor((left - element.offsetLeft) / element.offsetWidth * token.length);
 };
 
+EditorViewModel.prototype.moveToStartOfLine = function() {
+    if (this.tokens.current().isReturn())
+	return;
+
+    for (var i = this.tokens.currentIndex(); i > 0; i--) {
+	if (this.tokens.at(i).isReturn())
+	    break;
+    }
+    i++;
+    this.tokens.jumpTo(i);
+    this.offsetInToken = 0;
+};
+
+EditorViewModel.prototype.moveToEndOfLine = function() {
+    if (this.tokens.current().isReturn())
+	return;
+
+    for (var i = this.tokens.currentIndex(); i < this.tokens.length; i++) {
+	if (this.tokens.at(i).isReturn())
+	    break;
+    }
+    i--;
+    this.tokens.jumpTo(i);
+    this.offsetInToken = this.tokens.current().length;
+};
+
 EditorViewModel.prototype.moveToPosition = function(x, y) {
     this.height = 0;
     for (var i = 0; i < this.tokens.length; i++) {

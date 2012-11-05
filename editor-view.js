@@ -17,6 +17,8 @@ EditorView.prototype.commands = {
     'Right': 'moveForward',
     'Up': 'movePreviousLine',
     'Down': 'moveNextLine',
+    'C-a': 'moveToStartOfLine',
+    'C-e': 'moveToEndOfLine',
     'Enter': 'newLine',
     'Backspace': 'deletePreviousChar',
     'Delete': 'deletePreviousChar'  // FIXME
@@ -66,6 +68,7 @@ EditorView.prototype.onKeyDown = function(ev) {
 	if (ev.ctrlKey)
 	    commandText = 'C-' + commandText;
 
+	console.log(commandText);
 	if (commandText in this.commands) {
 	    var method = this.viewModel[this.commands[commandText]];
 	    if (method) {
