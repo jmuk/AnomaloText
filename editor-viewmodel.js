@@ -45,14 +45,14 @@ EditorViewModel.prototype.getCaretPosition = function() {
         } else {
             while (this.tokens.front[i].type == 'control')
                 i--;
-	    left = 0;
+            left = 0;
             var count = this.tokens.front.length -1 -  i;
             top = this.tokens.front[i].element.offsetTop;
             top += this.tokens.front[i].element.offsetHeight * count;
         }
     } else {
         var element = token.element;
-	top = element.offsetTop;
+        top = element.offsetTop;
         left = element.offsetLeft;
         if (token.length > 0)
             left += element.offsetWidth * this.offsetInToken / token.length;
@@ -70,7 +70,7 @@ EditorViewModel.prototype.moveBackward = function() {
             this.offsetInToken = this.tokens.current().length;
         } else {
             this.offsetInToken =
-		Math.max(this.tokens.current().length - 1, 0);
+                Math.max(this.tokens.current().length - 1, 0);
         }
     }
 };
@@ -79,10 +79,10 @@ EditorViewModel.prototype.moveForward = function() {
     if (this.offsetInToken < this.tokens.current().length) {
         this.offsetInToken += 1;
     } else if (this.tokens.forward()) {
-	if (this.tokens.previous().type == 'control') {
-	    this.offsetInToken = 0;
-	} else if (this.tokens.current().type == 'control') {
-	    this.tokens.forward();
+        if (this.tokens.previous().type == 'control') {
+            this.offsetInToken = 0;
+        } else if (this.tokens.current().type == 'control') {
+            this.tokens.forward();
             this.offsetInToken = 0;
         } else {
             this.offsetInToken = 1;
@@ -93,82 +93,82 @@ EditorViewModel.prototype.moveForward = function() {
 EditorViewModel.prototype.movePreviousLine = function() {
     var i = this.tokens.currentIndex() - 1;
     for (; i >= 0; i--) {
-	if (this.tokens.at(i).isReturn())
-	    break;
+        if (this.tokens.at(i).isReturn())
+            break;
     }
     i--;
     if (i < 0) {
-	this.tokens.jumpTo(0);
-	this.offsetInToken = 0;
-	return;
+        this.tokens.jumpTo(0);
+        this.offsetInToken = 0;
+        return;
     } else if (this.tokens.at(i).isReturn()) {
-	this.tokens.jumpTo(i + 1);
-	this.offsetInToken = 0;
-	return;
+        this.tokens.jumpTo(i + 1);
+        this.offsetInToken = 0;
+        return;
     }
 
     var left = this.getCaretPosition().left;
     for (; i >= 0 && !this.tokens.at(i).isReturn(); i--) {
-	var element = this.tokens.at(i).element;
-	if (element.offsetLeft < left)
-	    break;
+        var element = this.tokens.at(i).element;
+        if (element.offsetLeft < left)
+            break;
     }
     if (i < 0 || this.tokens.at(i).isReturn())
-	i = Math.max(0, i + 1);
+        i = Math.max(0, i + 1);
     this.tokens.jumpTo(i);
     var token = this.tokens.current();
     var element = token.element;
     this.offsetInToken =
-	Math.floor((left - element.offsetLeft) / element.offsetWidth * token.length);
+        Math.floor((left - element.offsetLeft) / element.offsetWidth * token.length);
 };
 
 EditorViewModel.prototype.moveNextLine = function() {
     if (this.tokens.current().isReturn()) {
-	this.tokens.forward();
-	this.offsetInToken = 0;
-	return;
+        this.tokens.forward();
+        this.offsetInToken = 0;
+        return;
     }
 
     var i = this.tokens.currentIndex();
     for (; i < this.tokens.length; i++) {
-	if (this.tokens.at(i).isReturn())
-	    break;
+        if (this.tokens.at(i).isReturn())
+            break;
     }
     i++;
     if (i >= this.tokens.length) {
-	this.tokens.jumpTo(this.tokens.length - 1);
-	if (this.tokens.current().isReturn())
-	    this.tokens.backward();
-	this.offsetInToken = Math.max(this.tokens.current().length - 1, 0);
-	return;
+        this.tokens.jumpTo(this.tokens.length - 1);
+        if (this.tokens.current().isReturn())
+            this.tokens.backward();
+        this.offsetInToken = Math.max(this.tokens.current().length - 1, 0);
+        return;
     } else if (this.tokens.at(i).isReturn()) {
-	this.tokens.jumpTo(i);
-	this.offsetInToken = 0;
-	return;
+        this.tokens.jumpTo(i);
+        this.offsetInToken = 0;
+        return;
     }
 
     var left = this.getCaretPosition().left;
     for (; i < this.tokens.length && !this.tokens.at(i).isReturn(); i++) {
-	var element = this.tokens.at(i).element;
-	if (element.offsetLeft + element.offsetWidth >= left)
-	    break;
+        var element = this.tokens.at(i).element;
+        if (element.offsetLeft + element.offsetWidth >= left)
+            break;
     }
     if (i > this.tokens.length || this.tokens.at(i).isReturn())
-	i--;
+        i--;
     this.tokens.jumpTo(i);
     var token = this.tokens.current();
     var element = token.element;
     this.offsetInToken =
-	Math.floor((left - element.offsetLeft) / element.offsetWidth * token.length);
+        Math.floor((left - element.offsetLeft) / element.offsetWidth * token.length);
 };
 
 EditorViewModel.prototype.moveToStartOfLine = function() {
     if (this.tokens.current().isReturn())
-	return;
+        return;
 
     for (var i = this.tokens.currentIndex(); i > 0; i--) {
-	if (this.tokens.at(i).isReturn())
-	    break;
+        if (this.tokens.at(i).isReturn())
+            break;
     }
     i++;
     this.tokens.jumpTo(i);
@@ -177,11 +177,11 @@ EditorViewModel.prototype.moveToStartOfLine = function() {
 
 EditorViewModel.prototype.moveToEndOfLine = function() {
     if (this.tokens.current().isReturn())
-	return;
+        return;
 
     for (var i = this.tokens.currentIndex(); i < this.tokens.length; i++) {
-	if (this.tokens.at(i).isReturn())
-	    break;
+        if (this.tokens.at(i).isReturn())
+            break;
     }
     i--;
     this.tokens.jumpTo(i);
@@ -189,6 +189,7 @@ EditorViewModel.prototype.moveToEndOfLine = function() {
 };
 
 EditorViewModel.prototype.moveToPosition = function(x, y) {
+    console.log(x + ", " + y);
     this.height = 0;
     for (var i = 0; i < this.tokens.length; i++) {
         var token = this.tokens.at(i);
@@ -204,29 +205,28 @@ EditorViewModel.prototype.moveToPosition = function(x, y) {
     var numLines = Math.floor(y / this.height);
     var i = 0;
     for (; i < this.tokens.length && numLines > 0; i++) {
-        var token = this.tokens.at(i);
-        if (token.isReturn()) {
+        if (this.tokens.at(i).isReturn())
             numLines--;
-	}
     }
     for (; i < this.tokens.length; i++) {
-	var token = this.tokens.at(i);
-	if (token.isReturn())
-	    break;
-
-	var element = token.element;
-	if (element.offsetLeft + element.offsetWidth > x) {
-	    var offset = x - element.offsetLeft;
-	    this.tokens.jumpTo(i);
+        var token = this.tokens.at(i);
+        var element = token.element;
+        if (token.isReturn()) {
+            break;
+        } else if (element.offsetLeft + element.offsetWidth > x) {
+            var offset = x - element.offsetLeft;
+            this.tokens.jumpTo(i);
             this.offsetInToken =
-                Math.floor(offset * token.length / token.element.offsetWidth);
-	    return;
-	}
+                Math.floor(offset * token.length / element.offsetWidth);
+            return;
+        }
     }
-
-    i--;
+    if (this.tokens.at(i).isReturn() && !this.tokens.at(i - 1).isReturn())
+        i--;
     this.tokens.jumpTo(i);
-    this.offsetInToken = this.tokens.current().length;
+    var new_current = this.tokens.current();
+    this.offsetInToken =
+        new_current.isReturn() ? 0 : new_current.length;
 };
 
 EditorViewModel.prototype.deletePreviousChar = function() {
@@ -242,16 +242,16 @@ EditorViewModel.prototype.deletePreviousChar = function() {
     if (current.length <= 1) {
         current.element.parentNode.removeChild(current.element);
         this.tokens.remove();
-	if (this.tokens.backward()) {
-	    if (this.tokens.current().type == 'control') {
-		this.tokens.forward();
-		this.offsetInToken = 0;
-	    } else {
-		this.tokens.offsetInToken = this.tokens.current().length;
-	    }
-	} else {
-	    this.offsetInToken = 0;    
-	}
+        if (this.tokens.backward()) {
+            if (this.tokens.current().type == 'control') {
+                this.tokens.forward();
+                this.offsetInToken = 0;
+            } else {
+                this.tokens.offsetInToken = this.tokens.current().length;
+            }
+        } else {
+            this.offsetInToken = 0;    
+        }
     } else {
         var text = current.text.substring(0, this.offsetInToken - 1) +
             current.text.substring(this.offsetInToken);
@@ -266,8 +266,8 @@ EditorViewModel.prototype.insertTokenInto = function(token) {
     if (this.offsetInToken == 0) {
         contentArea.insertBefore(token.element, current.element);
         this.tokens.insert(token);
-	this.tokens.backward();
-	this.offsetInToken = token.length;
+        this.tokens.backward();
+        this.offsetInToken = token.length;
     } else if (this.offsetInToken == this.tokens.current().length) {
         if (contentArea.lastChild == current.element) {
             contentArea.appendChild(token.element);
@@ -322,8 +322,8 @@ EditorViewModel.prototype.insertText = function(text) {
 EditorViewModel.prototype.newLine = function() {
     var token = Token.getToken('\n');
     if (token[0]) {
-	this.insertTokenInto(token[0]);
-	this.tokens.forward();
-	this.offsetInToken = 0;
+        this.insertTokenInto(token[0]);
+        this.tokens.forward();
+        this.offsetInToken = 0;
     }
 };
