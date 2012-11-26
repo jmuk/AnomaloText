@@ -1,5 +1,9 @@
 function EditorModel(contents) {
     this.Init(contents);
+    this.caretPosition = 0;
+    this.idealCaretOffset = null;
+    this.openParen = null;
+    this.closeParen = null;
 }
 
 EditorModel.prototype.Init = function(contents) {
@@ -9,13 +13,13 @@ EditorModel.prototype.Init = function(contents) {
         lineData.push(new EditorLineModel(lines[i]));
     }
     this.lines = new Zipper(lineData);
-    this.moveCaret(0);
 };
 
 EditorModel.prototype.addElementsToContents = function(content) {
     for (var i = 0; i < this.lines.length; i++) {
         this.lines.at(i).addElementsToContents(content);
     }
+    this.maybeHighlightParens();
 };
 
 EditorModel.prototype.getCaretPosition = function() {
@@ -40,13 +44,65 @@ EditorModel.prototype.getCaretPosition = function() {
     return result;
 };
 
+// TODO: move this to View, and use overlay div rather than edit class.
+EditorModel.prototype.maybeHighlightParens = function() {
+    if (this.openParen) {
+        this.openParen.classList.remove('highlighted');
+        this.openParen.classList.remove('highlighted-warning');
+    }
+    if (this.closeParen) {
+        this.closeParen.classList.remove('highlighted');
+        this.openParen.classList.remove('highlighted-warning');
+    }
+    this.openParen = null;
+    this.closeParen = null;
+    var parens = this.lines.current().isParen(this.caretPosition);
+    if (!parens)
+        return;
+    if (parens[0] == ParenType.PAREN_OPEN)
+        this.openParen = parens[1];
+    else
+        this.closeParen = parens[1];
+
+    var origin = parens[1];
+    var target = (parens[0] == ParenType.PAREN_OPEN) ?
+        parens[1].nextSibling : parens[1].previousSibling;
+    var counter = 1;
+    while (target) {
+        var data = isParen(target.textContent);
+        if (data != null) {
+            if (data == parens[0])
+                counter++;
+            else
+                counter--;
+        }
+        if (counter == 0) {
+            break;
+        }
+        target = (parens[0] == ParenType.PAREN_OPEN) ?
+            target.nextSibling : target.previousSibling;
+    }
+    if (target) {
+        if (parens[0] == ParenType.PAREN_OPEN)
+            this.closeParen = target;
+        else
+            this.openParen = target;
+        origin.classList.add('highlighted');
+        target.classList.add('highlighted');
+    } else {
+        origin.classList.add('highlighted-warning');
+    }
+    // TODO: add mismatched highlights.
+};
+
 EditorModel.prototype.getLineCount = function() {
     return this.lines.length;  
 };
 
 EditorModel.prototype.moveCaret = function(newPosition) {
     this.caretPosition = newPosition;
-    this.idealCaretPosition = null;
+    this.idealCaretOffset = null;
+    this.maybeHighlightParens();
 };
 
 EditorModel.prototype.moveToPosition = function(leftOffset, lines) {
@@ -82,6 +138,7 @@ EditorModel.prototype.movePreviousLine = function() {
     if (this.lines.backward()) {
         this.caretPosition =
             this.lines.current().getPosition(this.idealCaretOffset);
+        this.maybeHighlightParens();
     }
 };
 
@@ -93,6 +150,7 @@ EditorModel.prototype.moveNextLine = function() {
     if (this.lines.forward()) {
         this.caretPosition =
             this.lines.current().getPosition(this.idealCaretOffset);
+        this.maybeHighlightParens();
     }
 };
 
@@ -115,7 +173,7 @@ EditorModel.prototype.deletePreviousChar = function() {
             curLine.concat(line);
         }
     } else {
-        line.deleteCharAt(this.caretPosition);
+        line.deleteCharAt(this.caretPosition - 1);
         this.moveCaret(this.caretPosition - 1);
     }
 };
@@ -131,7 +189,7 @@ EditorModel.prototype.deleteNextChar = function() {
             line.concat(nextLine);
         }
     } else {
-        line.deleteCharAt(this.caretPosition + 1);
+        line.deleteCharAt(this.caretPosition);
     }
 };
 
@@ -155,12 +213,28 @@ EditorModel.prototype.insertText = function(text) {
     }
 };
 
+
 function EditorLineModel(line) {
     this.contents = line;
     this.length = line.length;
     this.tokens = this.parseLine(line);
     this.linebreak = document.createElement('br');
 }
+
+EditorLineModel.prototype.isParen = function(position) {
+    for (var i = 0; i < this.tokens.length; i++) {
+        if (position < this.tokens[i].length) {
+            var result = isParen(this.tokens[i].text);
+            if (result)
+                return [result, this.tokens[i].element];
+            else
+                return null;
+        } else {
+            position -= this.tokens[i].length;
+        }
+    }
+    return null;
+};
 
 EditorLineModel.prototype.addElementsToContents = function(contents) {
     for (var i = 0; i < this.tokens.length; i++) {
@@ -180,10 +254,15 @@ EditorLineModel.prototype.parseLine = function(line) {
     while (line.length > 0) {
         var m = line.match(words);
         var length = 1;
-        if (m)
+        var tokenType = 'other';
+        if (m) {
             length = m[0].length;
+            tokenType = 'words';
+        } else if (isParen(line[0])) {
+            tokenType = 'paren';
+        }
         tokens.push.apply(
-            tokens, Token.getTokens(line.slice(0, length)));
+            tokens, Token.getTokens(line.slice(0, length), tokenType));
         line = line.slice(length);
     }
     return tokens;
@@ -309,7 +388,7 @@ EditorLineModel.prototype.splitAt = function(position) {
 function replaceElements(olds, news, container, nextElement) {
     var i;
     for (i = 0; i < olds.length; i++) {
-        container.removeChild(olds.element);
+        container.removeChild(olds[i].element);
     }
     for (i = 0; i < news.length; i++) {
         news[i].createElement();
@@ -318,6 +397,7 @@ function replaceElements(olds, news, container, nextElement) {
 };
 
 EditorLineModel.prototype.updateContents = function(newContents) {
+    console.log(newContents);
     var newTokens = this.parseLine(newContents);
     var old_s = 0, new_s = 0;
     var old_e = this.tokens.length - 1, new_e = newTokens.length - 1;
@@ -347,4 +427,26 @@ EditorLineModel.prototype.updateContents = function(newContents) {
             this.tokens.slice(old_e + 1));
     }
     this.contents = newContents;
+    this.length = newContents.length;
 };
+
+// TODO: parens should be defined in the mode.
+var ParenType = {
+    PAREN_OPEN: 1,
+    PAREN_CLOSE: -1
+};
+
+function isParen(text) {
+    var parens = "({[]})";
+    if (text.length > 1)
+        return null;
+
+    var i = parens.indexOf(text);
+
+    if (i < 0)
+        return null;
+    if (i < parens.length / 2)
+        return ParenType.PAREN_OPEN;
+    else
+        return ParenType.PAREN_CLOSE;
+}

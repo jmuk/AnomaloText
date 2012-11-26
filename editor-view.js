@@ -1,6 +1,8 @@
 function EditorView(model) {
     this.model = model;
     this.contentArea = document.getElementById('content-area');
+    while (this.contentArea.firstChild)
+        this.contentArea.removeChild(this.contentArea.firstChild);
     this.model.addElementsToContents(this.contentArea);
     this.createEventReceiver();
     this.lineHeight = 0;

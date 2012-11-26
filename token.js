@@ -4,11 +4,12 @@
  * assumption that each character in a token has exactly the
  * same width.
  */
-function Token(text, type) {
+function Token(text, type, tokenClass) {
     this.text = text;
     this.type = type;
+    this.tokenClass = tokenClass;
     if (text == '\n') {
-        this.length = 0;
+	this.length = 0;
     } else {
         this.length = text.length;
     }
@@ -17,6 +18,7 @@ function Token(text, type) {
 
 Token.prototype.createElement = function() {
     this.element = document.createElement('span');
+    this.element.className = this.tokenClass;
     if (this.text == ' ') {
         // Use nbsp for spaces.
         this.element.textContent = String.fromCharCode(0xA0);
@@ -30,10 +32,6 @@ Token.prototype.createElement = function() {
     } else {
         this.element.textContent = this.text;
     }
-};
-
-Token.prototype.isReturn = function() {
-    return this.element.tagName == 'BR';
 };
 
 Token.prototype.setText = function(text) {
@@ -54,7 +52,7 @@ Token.prototype.equalsTo = function(another) {
  * second is the text remaining in chunk.  Puts null if no valid
  * token is found.
  */
-Token.getToken = function(chunk) {
+Token.getToken = function(chunk, tokenClass) {
     function matchInCategory(charCode, category) {
         for (var r = 0; r < category.length; r++) {
             var range = category[r];
@@ -136,14 +134,14 @@ Token.getToken = function(chunk) {
         }
     }
 
-    return [new Token(chunk.substring(0, length), type),
+    return [new Token(chunk.substring(0, length), type, tokenClass),
             chunk.substring(length)];
 };
 
-Token.getTokens = function(chunk) {
+Token.getTokens = function(chunk, tokenClass) {
     var tokens = [];
     while (chunk.length > 0) {
-        var tokenData = Token.getToken(chunk);
+        var tokenData = Token.getToken(chunk, tokenClass);
         tokens.push(tokenData[0]);
         chunk = tokenData[1];
     }
