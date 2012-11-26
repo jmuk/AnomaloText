@@ -1,6 +1,5 @@
+var editors = [];
 (function() {
-function $(id) { return document.getElementById(id); }
-
 function loadFile(filename, callback) {
     var xhr = new XMLHttpRequest();
     xhr.open('GET', filename, true);
@@ -13,8 +12,8 @@ function loadFile(filename, callback) {
 }
 
 function onFileLoaded(contents) {
-    var viewModel = new EditorViewModel(contents, $('content-area'));
-    new EditorView(viewModel);
+    var model = new EditorModel(contents);
+    editors.push(new EditorView(model));
 }
 
 function windowOnLoad() {
@@ -23,3 +22,9 @@ function windowOnLoad() {
 
 window.addEventListener('load', windowOnLoad);
 })();
+
+function onFontActive() {
+    for (var i = 0; i < editors.length; i++) {
+        editors[i].updateHeight();
+    }
+}

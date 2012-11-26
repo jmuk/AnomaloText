@@ -1,9 +1,15 @@
 <html>
   <head>
     <title>editor</title>
+    <script type="text/javascript" src="./zipper.js"></script>
+    <script type="text/javascript" src="./token.js"></script>
+    <script type="text/javascript" src="./editor-model.js"></script>
+    <script type="text/javascript" src="./editor-view.js"></script>
+    <script type="text/javascript" src="./editor.js"></script>
     <script type="text/javascript">
       WebFontConfig = {
-        google: { families: [ 'Source+Code+Pro::latin' ] }
+        google: { families: [ 'Source+Code+Pro::latin' ] },
+        active: onFontActive  // defined in editor.js
       };
       (function() {
         var wf = document.createElement('script');
@@ -33,11 +39,6 @@
         font-family: 'Source+Code+Pro::latin', monospace;
       }
     </style>
-    <script type="text/javascript" src="./zipper.js"></script>
-    <script type="text/javascript" src="./token.js"></script>
-    <script type="text/javascript" src="./editor-viewmodel.js"></script>
-    <script type="text/javascript" src="./editor-view.js"></script>
-    <script type="text/javascript" src="./editor.js"></script>
   </head>
   <body>
     <div id="editor">

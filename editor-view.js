@@ -1,12 +1,23 @@
-function EditorView(viewModel) {
-    this.viewModel = viewModel;
+function EditorView(model) {
+    this.model = model;
+    this.contentArea = document.getElementById('content-area');
+    this.model.addElementsToContents(this.contentArea);
     this.createEventReceiver();
+    this.lineHeight = 0;
+    this.lineMargin = 0;
+    this.updateHeight();
 }
 
+EditorView.prototype.updateHeight = function() {
+    this.lineHeight = this.contentArea.offsetHeight / this.model.getLineCount();
+    this.caretIndicator.style.height = this.lineHeight;
+};
+
 EditorView.prototype.updateCaretIndicator = function() {
-    var caretPosition = this.viewModel.getCaretPosition();
-    this.caretIndicator.style.left = caretPosition.left + 'px';
-    this.caretIndicator.style.top = caretPosition.top + 'px';
+    var caretPosition = this.model.getCaretPosition();
+    this.caretIndicator.style.left = caretPosition.leftOffset + 'px';
+    this.caretIndicator.style.top =
+        caretPosition.lines * this.lineHeight + 'px';
     this.receiverContainer.style.top = this.caretIndicator.style.top;
     this.receiverSpacer.style.width = this.caretIndicator.style.left;
 };
@@ -21,7 +32,7 @@ EditorView.prototype.commands = {
     'C-e': 'moveToEndOfLine',
     'Enter': 'newLine',
     'Backspace': 'deletePreviousChar',
-    'Delete': 'deletePreviousChar'  // FIXME
+    'Delete': 'deleteNextChar'
 };
 
 EditorView.prototype.onKeyDown = function(ev) {
@@ -70,13 +81,13 @@ EditorView.prototype.onKeyDown = function(ev) {
 
         console.log(commandText);
         if (commandText in this.commands) {
-            var method = this.viewModel[this.commands[commandText]];
+            var method = this.model[this.commands[commandText]];
             if (method) {
-                method.bind(this.viewModel)();
+                method.bind(this.model)();
                 consumed = true;
             }
         } else if (commandText.length == 1) {
-            this.viewModel.insertText(commandText);
+            this.model.insertText(commandText);
             consumed = true;
         }
     }
@@ -115,7 +126,7 @@ EditorView.prototype.createEventReceiver = function() {
     }).bind(this));
     receiver.addEventListener('compositionend', (function(ev) {
         this.receiverContainer.style.zIndex = '-1';
-        this.viewModel.insertText(ev.data);
+        this.model.insertText(ev.data);
         this.receiver.textContent = '';
         this.receiver.incomposition = false;
         this.caretIndicator.style.visibility = 'visible';
@@ -130,7 +141,8 @@ EditorView.prototype.createEventReceiver = function() {
         selection.removeAllRanges();
         selection.addRange(caretRange);
 
-        this.viewModel.moveToPosition(ev.pageX, ev.pageY);
+        var lines = Math.floor(ev.pageY / this.lineHeight);
+        this.model.moveToPosition(ev.pageX, lines);
         this.updateCaretIndicator();
     }).bind(this);
     
@@ -139,11 +151,9 @@ EditorView.prototype.createEventReceiver = function() {
     editor.appendChild(receiverContainer);
     receiver.focus();
 
-    var contentArea = document.getElementById('content-area');
     var indicator = document.createElement('div');
     indicator.style.border = 'solid 1px';
     indicator.style.width = '0';
-    indicator.style.height = contentArea.firstChild.offsetHeight;
     indicator.style.top = 0;
     indicator.style.left = 0;
     indicator.style.position = 'absolute';
