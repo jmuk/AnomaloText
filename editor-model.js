@@ -66,7 +66,7 @@ EditorModel.prototype.maybeHighlightParens = function() {
 
     var origin = parens[1];
     var target = (parens[0] == ParenType.PAREN_OPEN) ?
-        parens[1].nextSibling : parens[1].previousSibling;
+        origin.nextSibling : origin.previousSibling;
     var counter = 1;
     while (target) {
         var data = isParen(target.textContent);
@@ -87,12 +87,12 @@ EditorModel.prototype.maybeHighlightParens = function() {
             this.closeParen = target;
         else
             this.openParen = target;
+        // TODO: add mismatched highlights.
         origin.classList.add('highlighted');
         target.classList.add('highlighted');
     } else {
         origin.classList.add('highlighted-warning');
     }
-    // TODO: add mismatched highlights.
 };
 
 EditorModel.prototype.getLineCount = function() {
@@ -193,17 +193,22 @@ EditorModel.prototype.deleteNextChar = function() {
     }
 };
 
+EditorModel.prototype.newLine = function() {
+    this.insertText('\n');
+};
+
 EditorModel.prototype.insertText = function(text) {
     var lines = text.split("\n");
     if (lines.length > 1) {
-        var newLines = this.lines.current().splitAtCurrent();
+        var newLines = this.lines.current().splitAt(
+            this.caretPosition);
         this.lines.remove();
-        newLines[0].insertText(lines[0]);
+        newLines[0].insertTextAt(lines[0], newLines[0].length);
         this.lines.insert(newLines[0]);
         for (var i = 1; i < lines.length - 1; i++) {
             this.lines.insert(new EditorLineModel(lines[i]));
         }
-        newLines[1].insertText(lines[lines.length - 1]);
+        newLines[1].insertTextAt(lines[lines.length - 1], 0);
         this.lines.insert(newLines[1]);
         this.lines.backward();
         this.moveCaret(lines[lines.length - 1].length);
@@ -347,9 +352,12 @@ EditorLineModel.prototype.splitAt = function(position) {
     var nextContents = this.contents.slice(position);
     var i = 0;
     var remaining = position;
-    for (; i < remaining > 0 && i < this.tokens.length; i++)
+    for (; i < this.tokens.length; i++) {
+        if (remaining < this.tokens[i].length) {
+            break;
+        }
         remaining -= this.tokens[i].length;
-
+    }
     var newLine = new EditorLineModel('');
     if (remaining == 0) {
         // this is easy, split the tokens into two.
@@ -357,25 +365,25 @@ EditorLineModel.prototype.splitAt = function(position) {
         this.tokens = this.tokens.slice(0, i);
     } else {
         // We need to split a token in the middle.
-        var prev = this.tokens.slice(0, i - 1);
-        var next = this.tokens.slice(i);
+        var prev = this.tokens.slice(0, i);
+        var next = this.tokens.slice(i + 1);
         var token = this.tokens[i];
-        var offset = remaining + token.length;
         var newToken1 = new Token(
-            token.text.slice(0, offset), token.type);
+            token.text.slice(0, remaining), token.type);
         var newToken2 = new Token(
-            token.text.slice(offset), token.type);
+            token.text.slice(remaining), token.type);
         var container = this.linebreak.parentNode;
         var nextElement = (next.length != 0) ?
             next[0].element : this.linebreak;
         replaceElements([token], [newToken1, newToken2],
                         container, nextElement);
         prev.push(newToken1);
-        next.shift(newToken2);
+        next.unshift(newToken2);
         this.tokens = prev;
         newLine.tokens = next;
     }
     this.contents = prevContents;
+    this.length = prevContents.length;
     newLine.contents = nextContents;
     newLine.length = nextContents.length;
     newLine.linebreak = this.linebreak;
@@ -397,7 +405,6 @@ function replaceElements(olds, news, container, nextElement) {
 };
 
 EditorLineModel.prototype.updateContents = function(newContents) {
-    console.log(newContents);
     var newTokens = this.parseLine(newContents);
     var old_s = 0, new_s = 0;
     var old_e = this.tokens.length - 1, new_e = newTokens.length - 1;
@@ -438,7 +445,7 @@ var ParenType = {
 
 function isParen(text) {
     var parens = "({[]})";
-    if (text.length > 1)
+    if (text.length != 1)
         return null;
 
     var i = parens.indexOf(text);

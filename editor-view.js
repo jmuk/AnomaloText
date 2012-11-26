@@ -81,12 +81,14 @@ EditorView.prototype.onKeyDown = function(ev) {
         if (ev.ctrlKey)
             commandText = 'C-' + commandText;
 
-        console.log(commandText);
         if (commandText in this.commands) {
             var method = this.model[this.commands[commandText]];
             if (method) {
                 method.bind(this.model)();
                 consumed = true;
+            } else {
+                console.warning(
+                    'cannot find method for ' + this.commands[commandText]);
             }
         } else if (commandText.length == 1) {
             this.model.insertText(commandText);
