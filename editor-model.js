@@ -2,6 +2,7 @@ function EditorModel(contents) {
     this.Init(contents);
     this.caretPosition = 0;
     this.idealCaretOffset = null;
+    this.selection = null;
 }
 
 EditorModel.prototype.Init = function(contents) {
@@ -110,7 +111,72 @@ EditorModel.prototype.moveToEndOfLine = function() {
     this.moveCaret(this.lines.current().length);
 };
 
+EditorModel.prototype.prepareSelection = function() {
+    if (!this.selection) {
+        this.selection = {
+            line: this.lines.currentIndex(),
+            position: this.caretPosition
+        };
+    }
+};
+
+EditorModel.prototype.deleteSelection = function() {
+    if (this.lines.currentIndex() == this.selection.line) {
+        var start = Math.min(this.caretPosition,
+                             this.selection.position);
+        var end = Math.max(this.caretPosition,
+                           this.selection.position);
+        this.lines.current().deleteCharsIn(start, end);
+        this.caretPosition = start;
+    } else {
+        var startPoint = this.selection;
+        var endPoint = {
+            line: this.lines.currentIndex(),
+            position: this.caretPosition
+        };
+        if (this.lines.currentIndex() < this.selection.line) {
+            var tmp = startPoint;
+            startPoint = endPoint;
+            endPoint = tmp;
+        }
+
+        this.lines.jumpTo(startPoint.line);
+        if (startPoint.position == 0) {
+            this.lines.current().deleteAllChars();
+            this.lines.remove();
+        } else {
+            this.lines.current().deleteCharsIn(startPoint.position,
+                                               this.lines.current().length);
+            this.lines.forward();
+        }
+        for (var i = startPoint.line + 1; i < endPoint.line; i++) {
+            this.lines.current().deleteAllChars();
+            this.lines.remove();
+        }
+        if (endPoint.position > 0) {
+            if (endPoint.position == this.lines.current().length) {
+                this.lines.current().deleteAllChars();
+                this.lines.remove();
+            } else {
+                this.lines.current().deleteCharsIn(0, endPoint.position);
+            }
+        }
+        this.lines.backward();
+        this.caretPosition = this.lines.current().length;
+        this.lines.current().concat(this.lines.next());
+        this.lines.forward();
+        this.lines.remove();
+        this.lines.backward();
+    }
+    this.selection = null;
+};
+
 EditorModel.prototype.deletePreviousChar = function() {
+    if (this.selection) {
+        this.deleteSelection();
+        return;
+    }
+
     var line = this.lines.current();
     if (this.caretPosition == 0) {
         if (this.lines.previous()) {
@@ -127,6 +193,11 @@ EditorModel.prototype.deletePreviousChar = function() {
 };
 
 EditorModel.prototype.deleteNextChar = function() {
+    if (this.selection) {
+        this.deleteSelection();
+        return;
+    }
+
     var line = this.lines.current();
     if (line.length == this.caretPosition) {
         if (this.lines.next()) {
@@ -146,6 +217,9 @@ EditorModel.prototype.newLine = function() {
 };
 
 EditorModel.prototype.insertText = function(text) {
+    if (this.selection)
+        this.deleteSelection();
+
     var lines = text.split("\n");
     if (lines.length > 1) {
         var newLines = this.lines.current().splitAt(
@@ -249,10 +323,28 @@ EditorLineModel.prototype.getElementAt = function(position) {
     return null;
 };
 
-EditorLineModel.prototype.deleteCharAt = function(position) {
-    var newContents = this.contents.slice(0, position) +
-        this.contents.slice(position + 1);
+EditorLineModel.prototype.deleteAllChars = function() {
+    for (var i = 0; i < this.tokens.length; i++) {
+        var token = this.tokens[i];
+        if (token.element)
+            token.element.parentNode.removeChild(token.element);
+    }
+    if (this.linebreak.parentNode) {
+        this.linebreak.parentNode.removeChild(this.linebreak);
+    }
+    this.tokens = [];
+    this.contents = '';
+    this.length = 0;
+};
+
+EditorLineModel.prototype.deleteCharsIn = function(start, end) {
+    var newContents = this.contents.slice(0, start) +
+        this.contents.slice(end);
     this.updateContents(newContents);
+};
+
+EditorLineModel.prototype.deleteCharAt = function(position) {
+    this.deleteCharsIn(position, position + 1);
 };
 
 EditorLineModel.prototype.insertTextAt = function(chunk, position) {
@@ -267,7 +359,7 @@ EditorLineModel.prototype.insertTextAt = function(chunk, position) {
 EditorLineModel.prototype.concat = function(another) {
     this.linebreak.parentNode.removeChild(this.linebreak);
     this.linebreak = another.linebreak;
-    this.tokens += another.tokens;
+    this.tokens = this.tokens.concat(another.tokens);
     this.length += another.length;
     this.contents += another.contents;
 };

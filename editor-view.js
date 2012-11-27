@@ -37,7 +37,7 @@ function borderedToken(element, className, container) {
     div.style.top = element.offsetTop + 'px';
     div.style.left = element.offsetLeft + 'px';
     div.style.position = 'absolute';
-    div.style.zIndex = '2';
+    div.style.zIndex = '1';
     container.appendChild(div);
     return div;
 }
@@ -51,6 +51,9 @@ EditorView.prototype.maybeHighlightParens = function() {
     this.parens = [];
 
     var origin = this.model.getCurrentElement();
+    if (!origin)
+        return;
+
     var paren = isParen(origin.textContent);
     if (paren == null)
         return;
@@ -94,7 +97,11 @@ EditorView.prototype.commands = {
     'C-e': 'moveToEndOfLine',
     'Enter': 'newLine',
     'Backspace': 'deletePreviousChar',
-    'Delete': 'deleteNextChar'
+    'Delete': 'deleteNextChar',
+    'S-Left': ['prepareSelection','moveBackward'],
+    'S-Right': ['prepareSelection', 'moveForward'],
+    'S-Up': ['prepareSelection', 'movePreviousLine'],
+    'S-Down': ['prepareSelection', 'moveNextLine']
 };
 
 EditorView.prototype.onKeyDown = function(ev) {
@@ -142,13 +149,22 @@ EditorView.prototype.onKeyDown = function(ev) {
             commandText = 'C-' + commandText;
 
         if (commandText in this.commands) {
-            var method = this.model[this.commands[commandText]];
-            if (method) {
-                method.bind(this.model)();
-                consumed = true;
+            // Assumes commandText is a string or an array.
+            var command;
+            if (typeof(this.commands[commandText]) == 'string') {
+                command = [this.commands[commandText]];
             } else {
-                console.warning(
-                    'cannot find method for ' + this.commands[commandText]);
+                command = this.commands[commandText];
+            }
+            for (var i = 0; i < command.length; i++) {
+                var method = this.model[command[i]];
+                if (method) {
+                    method.bind(this.model)();
+                    consumed = true;
+                } else {
+                    console.warn(
+                        'cannot find method for ' + this.commands[commandText]);
+                }
             }
         } else if (commandText.length == 1) {
             this.model.insertText(commandText);
