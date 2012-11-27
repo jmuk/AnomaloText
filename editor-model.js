@@ -2,8 +2,6 @@ function EditorModel(contents) {
     this.Init(contents);
     this.caretPosition = 0;
     this.idealCaretOffset = null;
-    this.openParen = null;
-    this.closeParen = null;
 }
 
 EditorModel.prototype.Init = function(contents) {
@@ -19,7 +17,6 @@ EditorModel.prototype.addElementsToContents = function(content) {
     for (var i = 0; i < this.lines.length; i++) {
         this.lines.at(i).addElementsToContents(content);
     }
-    this.maybeHighlightParens();
 };
 
 EditorModel.prototype.getCaretPosition = function() {
@@ -44,55 +41,9 @@ EditorModel.prototype.getCaretPosition = function() {
     return result;
 };
 
-// TODO: move this to View, and use overlay div rather than edit class.
-EditorModel.prototype.maybeHighlightParens = function() {
-    if (this.openParen) {
-        this.openParen.classList.remove('highlighted');
-        this.openParen.classList.remove('highlighted-warning');
-    }
-    if (this.closeParen) {
-        this.closeParen.classList.remove('highlighted');
-        this.openParen.classList.remove('highlighted-warning');
-    }
-    this.openParen = null;
-    this.closeParen = null;
-    var parens = this.lines.current().isParen(this.caretPosition);
-    if (!parens)
-        return;
-    if (parens[0] == ParenType.PAREN_OPEN)
-        this.openParen = parens[1];
-    else
-        this.closeParen = parens[1];
-
-    var origin = parens[1];
-    var target = (parens[0] == ParenType.PAREN_OPEN) ?
-        origin.nextSibling : origin.previousSibling;
-    var counter = 1;
-    while (target) {
-        var data = isParen(target.textContent);
-        if (data != null) {
-            if (data == parens[0])
-                counter++;
-            else
-                counter--;
-        }
-        if (counter == 0) {
-            break;
-        }
-        target = (parens[0] == ParenType.PAREN_OPEN) ?
-            target.nextSibling : target.previousSibling;
-    }
-    if (target) {
-        if (parens[0] == ParenType.PAREN_OPEN)
-            this.closeParen = target;
-        else
-            this.openParen = target;
-        // TODO: add mismatched highlights.
-        origin.classList.add('highlighted');
-        target.classList.add('highlighted');
-    } else {
-        origin.classList.add('highlighted-warning');
-    }
+EditorModel.prototype.getCurrentElement = function() {
+    return this.lines.current().getElementAt(
+        this.caretPosition);
 };
 
 EditorModel.prototype.getLineCount = function() {
@@ -102,7 +53,6 @@ EditorModel.prototype.getLineCount = function() {
 EditorModel.prototype.moveCaret = function(newPosition) {
     this.caretPosition = newPosition;
     this.idealCaretOffset = null;
-    this.maybeHighlightParens();
 };
 
 EditorModel.prototype.moveToPosition = function(leftOffset, lines) {
@@ -138,7 +88,6 @@ EditorModel.prototype.movePreviousLine = function() {
     if (this.lines.backward()) {
         this.caretPosition =
             this.lines.current().getPosition(this.idealCaretOffset);
-        this.maybeHighlightParens();
     }
 };
 
@@ -150,7 +99,6 @@ EditorModel.prototype.moveNextLine = function() {
     if (this.lines.forward()) {
         this.caretPosition =
             this.lines.current().getPosition(this.idealCaretOffset);
-        this.maybeHighlightParens();
     }
 };
 
@@ -226,21 +174,6 @@ function EditorLineModel(line) {
     this.linebreak = document.createElement('br');
 }
 
-EditorLineModel.prototype.isParen = function(position) {
-    for (var i = 0; i < this.tokens.length; i++) {
-        if (position < this.tokens[i].length) {
-            var result = isParen(this.tokens[i].text);
-            if (result)
-                return [result, this.tokens[i].element];
-            else
-                return null;
-        } else {
-            position -= this.tokens[i].length;
-        }
-    }
-    return null;
-};
-
 EditorLineModel.prototype.addElementsToContents = function(contents) {
     for (var i = 0; i < this.tokens.length; i++) {
         var token = this.tokens[i];
@@ -303,6 +236,17 @@ EditorLineModel.prototype.getPosition = function(offset) {
         offset -= token.element.offsetWidth;
     }
     return position;
+};
+
+EditorLineModel.prototype.getElementAt = function(position) {
+    for (var i = 0; i < this.tokens.length; i++) {
+        var token = this.tokens[i];
+        if (position < token.length) {
+            return token.element;
+        }
+        position -= token.length;
+    }
+    return null;
 };
 
 EditorLineModel.prototype.deleteCharAt = function(position) {
@@ -436,24 +380,3 @@ EditorLineModel.prototype.updateContents = function(newContents) {
     this.contents = newContents;
     this.length = newContents.length;
 };
-
-// TODO: parens should be defined in the mode.
-var ParenType = {
-    PAREN_OPEN: 1,
-    PAREN_CLOSE: -1
-};
-
-function isParen(text) {
-    var parens = "({[]})";
-    if (text.length != 1)
-        return null;
-
-    var i = parens.indexOf(text);
-
-    if (i < 0)
-        return null;
-    if (i < parens.length / 2)
-        return ParenType.PAREN_OPEN;
-    else
-        return ParenType.PAREN_CLOSE;
-}

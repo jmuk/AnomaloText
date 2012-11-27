@@ -8,6 +8,9 @@ function EditorView(model) {
     this.lineHeight = 0;
     this.lineMargin = 0;
     this.updateHeight();
+    this.parens = [];
+    this.openParen = null;
+    this.closeParen = null;
 }
 
 EditorView.prototype.updateHeight = function() {
@@ -22,6 +25,63 @@ EditorView.prototype.updateCaretIndicator = function() {
         caretPosition.lines * this.lineHeight + 'px';
     this.receiverContainer.style.top = this.caretIndicator.style.top;
     this.receiverSpacer.style.width = this.caretIndicator.style.left;
+    this.maybeHighlightParens();
+};
+
+function borderedToken(element, className, container) {
+    var div = document.createElement('div');
+    div.className = className;
+    // Assumes the border width is 1px, so reduce width/height by 2.
+    div.style.width = element.offsetWidth - 2 + 'px';
+    div.style.height = element.offsetHeight - 2 + 'px';
+    div.style.top = element.offsetTop + 'px';
+    div.style.left = element.offsetLeft + 'px';
+    div.style.position = 'absolute';
+    div.style.zIndex = '2';
+    container.appendChild(div);
+    return div;
+}
+
+// TODO: move this to View, and use overlay div rather than edit class.
+EditorView.prototype.maybeHighlightParens = function() {
+    for (var i = 0; i < this.parens.length; i++) {
+        var p = this.parens[i];
+        p.parentNode.removeChild(p);
+    }
+    this.parens = [];
+
+    var origin = this.model.getCurrentElement();
+    var paren = isParen(origin.textContent);
+    if (paren == null)
+        return;
+    
+    var target = (paren == ParenType.PAREN_OPEN) ?
+        origin.nextSibling : origin.previousSibling;
+    var counter = 1;
+    while (target) {
+        var data = isParen(target.textContent);
+        if (data != null) {
+            if (data == paren)
+                counter++;
+            else
+                counter--;
+        }
+        if (counter == 0) {
+            break;
+        }
+        target = (paren == ParenType.PAREN_OPEN) ?
+            target.nextSibling : target.previousSibling;
+    }
+
+    var container = document.getElementById('editor');
+    if (target) {
+        this.parens.push(
+            borderedToken(origin, 'highlighted', container),
+            borderedToken(target, 'highlighted', container));
+    } else {
+        this.parens.push(
+            borderedToken(origin, 'highlighted-warning', container));
+    }
 };
 
 // TODO: the command list has to be customizable.
@@ -169,3 +229,24 @@ EditorView.prototype.createEventReceiver = function() {
     this.receiver = receiver;
     this.caretIndicator = indicator;
 };
+
+// TODO: parens should be defined in the mode.
+var ParenType = {
+    PAREN_OPEN: 1,
+    PAREN_CLOSE: -1
+};
+
+function isParen(text) {
+    var parens = "({[]})";
+    if (text.length != 1)
+        return null;
+
+    var i = parens.indexOf(text);
+
+    if (i < 0)
+        return null;
+    if (i < parens.length / 2)
+        return ParenType.PAREN_OPEN;
+    else
+        return ParenType.PAREN_CLOSE;
+}
