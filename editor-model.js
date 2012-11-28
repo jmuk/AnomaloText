@@ -3,6 +3,8 @@ function EditorModel(contents) {
     this.caretPosition = 0;
     this.idealCaretOffset = null;
     this.selection = null;
+    // TODO: this has to be merged into the system clipboard.
+    this.killring = [];
 }
 
 EditorModel.prototype.Init = function(contents) {
@@ -141,6 +143,36 @@ EditorModel.prototype.prepareSelection = function() {
     }
 };
 
+EditorModel.prototype.copyToClipboard = function() {
+    var selection = this.getSelection();
+    if (selection.start.line == selection.end.line) {
+        this.killring.unshift(this.lines.current().contents.slice(
+            selection.start.position, selection.end.position));
+    } else {
+        var selectedText = this.lines.at(
+            selection.start.line).contents.slice(selection.start.position);
+        selectedText += '\n';
+        for (var i = selection.start.line + 1;
+             i < selection.end.line; i++) {
+            selectedText += this.lines.at(i).contents;
+            selectedText += '\n';
+        }
+        if (selection.end.position > 0) {
+            selectedText += this.lines.at(
+                selection.end.line).contents.slice(0, selection.end.position);
+        }
+        console.log(selectedText);
+        this.killring.unshift(selectedText);
+    }
+};
+
+EditorModel.prototype.pasteFromClipboard = function() {
+    if (this.killring.length == 0)
+        return;
+
+    this.insertText(this.killring[0]);
+};
+
 EditorModel.prototype.deleteSelection = function() {
     var selection = this.getSelection();
     if (selection.start.line == selection.end.line) {
@@ -174,10 +206,14 @@ EditorModel.prototype.deleteSelection = function() {
         }
         this.lines.backward();
         this.caretPosition = this.lines.current().length;
-        this.lines.current().concat(this.lines.next());
-        this.lines.forward();
-        this.lines.remove();
-        this.lines.backward();
+        if (selection.end.position > 0) {
+            this.lines.current().concat(this.lines.next());
+            this.lines.forward();
+            this.lines.remove();
+            this.lines.backward();
+        } else {
+            this.lines.forward();
+        }
     }
     this.selection = null;
 };
@@ -379,7 +415,7 @@ EditorLineModel.prototype.splitAt = function(position) {
     if (position == 0) {
         var newLine = new EditorLineModel('');
         var nextElement = (this.tokens.length == 0) ?
-            this.linebreak : this.tokens[0];
+            this.linebreak : this.tokens[0].element;
         nextElement.parentNode.insertBefore(
             newLine.linebreak, nextElement);
         return [newLine, this];

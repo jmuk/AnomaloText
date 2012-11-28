@@ -123,7 +123,6 @@ EditorView.prototype.showSelection = function() {
     if (!selection)
         return;
 
-    console.log(selection);
     this.selection = [];
     if (selection.start.line == selection.end.line) {
         this.createSelectionDiv(
@@ -155,6 +154,9 @@ EditorView.prototype.commands = {
     'Down': 'moveNextLine',
     'C-a': 'moveToStartOfLine',
     'C-e': 'moveToEndOfLine',
+    'C-x': ['copyToClipboard', 'deleteSelection'],
+    'C-c': 'copyToClipboard',
+    'C-v': 'pasteFromClipboard',
     'Enter': 'newLine',
     'Backspace': 'deletePreviousChar',
     'Delete': 'deleteNextChar',
