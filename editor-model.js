@@ -47,6 +47,27 @@ EditorModel.prototype.getCurrentElement = function() {
         this.caretPosition);
 };
 
+EditorModel.prototype.getSelection = function() {
+    if (!this.selection)
+        return null;
+
+    var e1 = this.selection;
+    var e2 = {
+        line: this.lines.currentIndex(),
+        position: this.caretPosition
+    };
+    if (e2.line < e1.line || (e2.line == e1.line &&
+                              e2.position < e1.position)) {
+        var tmp = e2;
+        e2 = e1;
+        e1 = tmp;
+    }
+
+    e1.offset = this.lines.at(e1.line).getOffset(e1.position);
+    e2.offset = this.lines.at(e2.line).getOffset(e2.position);
+    return {start: e1, end: e2};
+};
+
 EditorModel.prototype.getLineCount = function() {
     return this.lines.length;  
 };
@@ -121,44 +142,34 @@ EditorModel.prototype.prepareSelection = function() {
 };
 
 EditorModel.prototype.deleteSelection = function() {
-    if (this.lines.currentIndex() == this.selection.line) {
-        var start = Math.min(this.caretPosition,
-                             this.selection.position);
-        var end = Math.max(this.caretPosition,
-                           this.selection.position);
-        this.lines.current().deleteCharsIn(start, end);
-        this.caretPosition = start;
+    var selection = this.getSelection();
+    if (selection.start.line == selection.end.line) {
+        this.lines.current().deleteCharsIn(
+            selection.start.position, selection.end.position);
+        this.caretPosition = selection.start.position;
     } else {
-        var startPoint = this.selection;
-        var endPoint = {
-            line: this.lines.currentIndex(),
-            position: this.caretPosition
-        };
-        if (this.lines.currentIndex() < this.selection.line) {
-            var tmp = startPoint;
-            startPoint = endPoint;
-            endPoint = tmp;
-        }
-
-        this.lines.jumpTo(startPoint.line);
-        if (startPoint.position == 0) {
+        this.lines.jumpTo(selection.start.line);
+        if (selection.start.position == 0) {
             this.lines.current().deleteAllChars();
             this.lines.remove();
         } else {
-            this.lines.current().deleteCharsIn(startPoint.position,
-                                               this.lines.current().length);
+            this.lines.current().deleteCharsIn(
+                selection.start.position,
+                this.lines.current().length);
             this.lines.forward();
         }
-        for (var i = startPoint.line + 1; i < endPoint.line; i++) {
+        for (var i = selection.start.line + 1;
+             i < selection.end.line; i++) {
             this.lines.current().deleteAllChars();
             this.lines.remove();
         }
-        if (endPoint.position > 0) {
-            if (endPoint.position == this.lines.current().length) {
+        if (selection.end.position > 0) {
+            if (selection.end.position == this.lines.current().length) {
                 this.lines.current().deleteAllChars();
                 this.lines.remove();
             } else {
-                this.lines.current().deleteCharsIn(0, endPoint.position);
+                this.lines.current().deleteCharsIn(
+                    0, selection.end.position);
             }
         }
         this.lines.backward();

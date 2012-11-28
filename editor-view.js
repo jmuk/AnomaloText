@@ -1,3 +1,12 @@
+var EditorZIndice = {
+    COMPOSITION: '2',
+    HIGHLIGHT: '1',
+    TEXT: '0',  // default.  It has to be 0.
+    SELECTION: '-1',
+    BACKGROUND: '-2',
+    HIDDEN: '-3'
+};
+
 function EditorView(model) {
     this.model = model;
     this.contentArea = document.getElementById('content-area');
@@ -11,6 +20,7 @@ function EditorView(model) {
     this.parens = [];
     this.openParen = null;
     this.closeParen = null;
+    this.selection = null;
 }
 
 EditorView.prototype.updateHeight = function() {
@@ -26,6 +36,7 @@ EditorView.prototype.updateCaretIndicator = function() {
     this.receiverContainer.style.top = this.caretIndicator.style.top;
     this.receiverSpacer.style.width = this.caretIndicator.style.left;
     this.maybeHighlightParens();
+    this.showSelection();
 };
 
 function borderedToken(element, className, container) {
@@ -37,7 +48,7 @@ function borderedToken(element, className, container) {
     div.style.top = element.offsetTop + 'px';
     div.style.left = element.offsetLeft + 'px';
     div.style.position = 'absolute';
-    div.style.zIndex = '1';
+    div.style.zIndex = EditorZIndice.HIGHLIGHT;
     container.appendChild(div);
     return div;
 }
@@ -76,14 +87,63 @@ EditorView.prototype.maybeHighlightParens = function() {
             target.nextSibling : target.previousSibling;
     }
 
-    var container = document.getElementById('editor');
     if (target) {
         this.parens.push(
-            borderedToken(origin, 'highlighted', container),
-            borderedToken(target, 'highlighted', container));
+            borderedToken(origin, 'highlighted', this.editor),
+            borderedToken(target, 'highlighted', this.editor));
     } else {
         this.parens.push(
-            borderedToken(origin, 'highlighted-warning', container));
+            borderedToken(origin, 'highlighted-warning', this.editor));
+    }
+};
+
+EditorView.prototype.createSelectionDiv = function(left, top, width) {
+    var div = document.createElement('div');
+    div.style.left = left + 'px';
+    div.style.top = top + 'px';
+    div.style.width = width + 'px';
+    div.style.height = this.lineHeight + 'px';
+    div.style.zIndex = EditorZIndice.SELECTION;
+    div.style.position = 'absolute';
+    div.className = 'selection';
+    this.contentArea.appendChild(div);
+    this.selection.push(div);
+};
+
+EditorView.prototype.showSelection = function() {
+    if (this.selection) {
+        for (var i = 0; i < this.selection.length; ++i) {
+            var s = this.selection[i];
+            s.parentNode.removeChild(s);
+        }
+        this.selection = null;
+    }
+
+    var selection = this.model.getSelection();
+    if (!selection)
+        return;
+
+    console.log(selection);
+    this.selection = [];
+    if (selection.start.line == selection.end.line) {
+        this.createSelectionDiv(
+            selection.start.offset,
+            selection.start.line * this.lineHeight,
+            selection.end.offset - selection.start.offset);
+    } else {
+        this.createSelectionDiv(
+            selection.start.offset,
+            selection.start.line * this.lineHeight,
+            this.contentArea.offsetWidth - selection.start.offset);
+        for (var i = selection.start.line + 1;
+             i < selection.end.line; i++) {
+            this.createSelectionDiv(
+                0, i * this.lineHeight,
+                this.contentArea.offsetWidth);
+        }
+        this.createSelectionDiv(
+            0, selection.end.line * this.lineHeight,
+            selection.end.offset);
     }
 };
 
@@ -185,7 +245,7 @@ EditorView.prototype.onKeyDown = function(ev) {
 EditorView.prototype.createEventReceiver = function() {
     var receiverContainer = document.createElement('div');
     receiverContainer.style.position = 'absolute';
-    receiverContainer.style.zIndex = '-1';
+    receiverContainer.style.zIndex = EditorZIndice.HIDDEN;
     receiverContainer.style.top = '0';
     receiverContainer.style.left = '0';
     receiverContainer.style.width = '100%';
@@ -201,11 +261,13 @@ EditorView.prototype.createEventReceiver = function() {
     receiver.onkeydown = this.onKeyDown.bind(this);
     receiver.addEventListener('compositionstart', (function(ev) {
         this.receiver.incomposition = true;
-        this.receiverContainer.style.zIndex = '2';
+        this.receiverContainer.style.zIndex = 
+            EditorZIndice.COMPOSITION;
         this.caretIndicator.style.visibility = 'hidden';
     }).bind(this));
     receiver.addEventListener('compositionend', (function(ev) {
-        this.receiverContainer.style.zIndex = '-1';
+        this.receiverContainer.style.zIndex =
+            EditorZIndice.HIDDEN;
         this.model.insertText(ev.data);
         this.receiver.textContent = '';
         this.receiver.incomposition = false;
@@ -227,8 +289,9 @@ EditorView.prototype.createEventReceiver = function() {
     }).bind(this);
     
     receiverContainer.appendChild(receiver);
-    var editor = document.getElementById('editor');
-    editor.appendChild(receiverContainer);
+    this.editor = document.getElementById('editor');
+    this.editor.appendChild(receiverContainer);
+    this.editor.style.zIndex = EditorZIndice.BACKGROUND;
     receiver.focus();
 
     var indicator = document.createElement('div');
@@ -237,8 +300,8 @@ EditorView.prototype.createEventReceiver = function() {
     indicator.style.top = 0;
     indicator.style.left = 0;
     indicator.style.position = 'absolute';
-    indicator.style.zIndex = '3';
-    editor.appendChild(indicator);
+    indicator.style.zIndex = EditorZIndice.HIGHLIGHT;
+    this.editor.appendChild(indicator);
 
     this.receiverContainer = receiverContainer;
     this.receiverSpacer = receiverSpacer;
