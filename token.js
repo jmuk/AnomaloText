@@ -18,7 +18,8 @@ function Token(text, type, tokenClass) {
 
 Token.prototype.createElement = function() {
     this.element = document.createElement('span');
-    this.element.className = this.tokenClass;
+    if (this.tokenClass)
+	this.element.className = this.tokenClass;
     if (this.text == ' ') {
         // Use nbsp for spaces.
         this.element.textContent = String.fromCharCode(0xA0);
@@ -41,6 +42,16 @@ Token.prototype.setText = function(text) {
     this.length = text.length;
     this.element.textContent = text;
 };
+
+Token.prototype.setClass = function(newClass) {
+    if (this.tokenClass == newClass)
+	return;
+    this.tokenClass = newClass;
+    if (!newClass)
+	this.element.className = '';
+    else
+	this.element.className = newClass;
+}
 
 Token.prototype.equalsTo = function(another) {
     return (this.type == another.type && this.text == another.text);

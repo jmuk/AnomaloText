@@ -350,20 +350,47 @@ EditorLineModel.prototype.addElementsToContents = function(contents) {
 // TODO: this has to respect the current mode.  That's why it's a
 // method rather than a function.
 EditorLineModel.prototype.parseLine = function(line) {
+    function BuildUnionRegexp(words) {
+        escaped_words = [];
+        for (var i = 0; i < words.length; i++) {
+            escaped_words.push(
+                words[i].replace(/([.*+?^=!:${}()|[\]\/\\])/g, "\\$1"));
+        }
+        return new RegExp('^(' + escaped_words.join('|') + ')\\b');
+    }
     var tokens = [];
     var word_segments = [];
-    var words = /^[a-zA-Z_0-9]+/;
+    var keywords = BuildUnionRegexp([
+        'and', 'del', 'for', 'is', 'raise',
+        'assert', 'elif', 'from', 'lambda', 'return',
+        'break', 'else', 'global', 'not', 'try',
+        'class', 'except', 'if', 'or', 'while',
+        'continue', 'exec', 'import', 'pass', 'yield',
+        'def', 'finally', 'in', 'print', 'True', 'False'
+    ]);
+    var words = [
+        {re: keywords, type:'reserved'},
+        {re: /^#.*/, type: 'comment'},
+        {re: /^@[a-zA-Z_0-9]+/, type: 'keyword'},
+        {re: /^('(\\'|.)*?'|"(\\\"|.)*?")/, type: 'string'},
+        {re:/^[a-zA-Z_0-9]+/, type:null}
+    ];
+    
     var index = 0;
     while (line.length > 0) {
-        var m = line.match(words);
         var length = 1;
-        var tokenType = 'other';
-        if (m) {
-            length = m[0].length;
-            tokenType = 'words';
-            word_segments.push(
-                {start: index, end: index + length});
-        } else if (isParen(line[0])) {
+        var tokenType = null;
+        for (var i = 0; i < words.length; i++) {
+            var m = line.match(words[i].re);
+            if (m) {
+                length = m[0].length;
+                tokenType = words[i].type;
+                word_segments.push(
+                    {start: index, end: index + length});
+                break;
+            }
+        }
+        if (!tokenType && isParen(line[0])) {
             tokenType = 'paren';
         }
         tokens.push.apply(
@@ -585,6 +612,7 @@ EditorLineModel.prototype.updateContents = function(newContents) {
         // Edit happens only in a token.  Simply replace the contents.
         this.tokens[old_e].type == newTokens[new_e].type) {
         this.tokens[old_e].setText(newTokens[new_e].text);
+        this.tokens[old_e].setClass(newTokens[new_e].tokenClass);
     } else {
         // Otherwise, replacing elements.
         var container = this.linebreak.parentNode;
