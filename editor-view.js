@@ -157,6 +157,8 @@ EditorView.prototype.commands = {
     'C-x': ['copyToClipboard', 'deleteSelection'],
     'C-c': 'copyToClipboard',
     'C-v': 'pasteFromClipboard',
+    'M-f': 'moveNextWord',
+    'M-b': 'movePreviousWord',
     'Enter': 'newLine',
     'Backspace': 'deletePreviousChar',
     'Delete': 'deleteNextChar',

@@ -94,6 +94,46 @@ EditorModel.prototype.moveBackward = function() {
     }
 };
 
+EditorModel.prototype.movePreviousWord = function() {
+    if (this.caretPosition == 0) {
+        if (!this.lines.backward())
+            return;
+        this.caretPosition = this.lines.current().length;
+    }
+
+    var newPosition =
+        this.lines.current().getPreviousWord(this.caretPosition);
+    while (newPosition == null) {
+        if (!this.lines.backward()) {
+            this.caretPosition = 0;
+            return;
+        }
+        newPosition = this.lines.current().getPreviousWord(
+            this.lines.current().length);
+    }
+    if (newPosition != null)
+        this.caretPosition = newPosition;
+};
+
+EditorModel.prototype.moveNextWord = function() {
+    if (this.caretPosition == this.lines.current().length) {
+        if (!this.lines.forward())
+            return;
+        this.caretPosition = 0;
+    }
+    var newPosition =
+        this.lines.current().getNextWord(this.caretPosition);
+    while (newPosition == null) {
+        if (!this.lines.forward()) {
+            this.caretPosition = this.lines.current().length;
+            return;
+        }
+        newPosition = this.lines.current().getNextWord(0);
+    }
+    if (newPosition != null)
+        this.caretPosition = newPosition;
+};
+
 EditorModel.prototype.moveForward = function() {
     var line = this.lines.current();
     if (this.caretPosition == line.length) {
@@ -291,7 +331,9 @@ EditorModel.prototype.insertText = function(text) {
 function EditorLineModel(line) {
     this.contents = line;
     this.length = line.length;
-    this.tokens = this.parseLine(line);
+    var data = this.parseLine(line);
+    this.tokens = data[0];
+    this.words = data[1];
     this.linebreak = document.createElement('br');
 }
 
@@ -309,7 +351,9 @@ EditorLineModel.prototype.addElementsToContents = function(contents) {
 // method rather than a function.
 EditorLineModel.prototype.parseLine = function(line) {
     var tokens = [];
+    var word_segments = [];
     var words = /^[a-zA-Z_0-9]+/;
+    var index = 0;
     while (line.length > 0) {
         var m = line.match(words);
         var length = 1;
@@ -317,14 +361,17 @@ EditorLineModel.prototype.parseLine = function(line) {
         if (m) {
             length = m[0].length;
             tokenType = 'words';
+            word_segments.push(
+                {start: index, end: index + length});
         } else if (isParen(line[0])) {
             tokenType = 'paren';
         }
         tokens.push.apply(
             tokens, Token.getTokens(line.slice(0, length), tokenType));
         line = line.slice(length);
+        index += length;
     }
-    return tokens;
+    return [tokens, word_segments];
 };
 
 EditorLineModel.prototype.getOffset = function(position) {
@@ -366,6 +413,39 @@ EditorLineModel.prototype.getElementAt = function(position) {
             return token.element;
         }
         position -= token.length;
+    }
+    return null;
+};
+
+EditorLineModel.prototype.getPreviousWord = function(position) {
+    if (this.words.length > 0) {
+        if (position <= this.words[0].start)
+            return null;
+        if (this.words[this.words.length - 1].end <= position)
+            return this.words[this.words.length - 1].start;
+    }
+
+    for (var i = 0; i < this.words.length; i++) {
+        var segment = this.words[i];
+        if (i > 0 && position <= segment.start) {
+            return this.words[i - 1].start;
+        } else if (segment.start < position &&
+                   position <= segment.end) {
+            return segment.start;
+        }
+    }
+    return null;
+};
+
+EditorLineModel.prototype.getNextWord = function(position) {
+    for (var i = 0; i < this.words.length; i++) {
+        var segment = this.words[i];
+        if (segment.start <= position &&
+            position < segment.end) {
+            return segment.end;
+        } else if (position < segment.start) {
+            return segment.end;
+        }
     }
     return null;
 };
@@ -488,7 +568,8 @@ function replaceElements(olds, news, container, nextElement) {
 };
 
 EditorLineModel.prototype.updateContents = function(newContents) {
-    var newTokens = this.parseLine(newContents);
+    var parseData = this.parseLine(newContents);
+    var newTokens = parseData[0];
     var old_s = 0, new_s = 0;
     var old_e = this.tokens.length - 1, new_e = newTokens.length - 1;
     for (; old_e >= 0 && new_e >= 0; old_e--, new_e--) {
@@ -518,4 +599,5 @@ EditorLineModel.prototype.updateContents = function(newContents) {
     }
     this.contents = newContents;
     this.length = newContents.length;
+    this.words = parseData[1];
 };
