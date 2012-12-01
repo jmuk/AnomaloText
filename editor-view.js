@@ -162,10 +162,12 @@ EditorView.prototype.commands = {
     'Enter': 'newLine',
     'Backspace': 'deletePreviousChar',
     'Delete': 'deleteNextChar',
-    'S-Left': ['prepareSelection','moveBackward'],
-    'S-Right': ['prepareSelection', 'moveForward'],
-    'S-Up': ['prepareSelection', 'movePreviousLine'],
-    'S-Down': ['prepareSelection', 'moveNextLine']
+    'S-Left': 'moveBackward true',
+    'S-Right': 'moveForward true',
+    'S-Up': 'movePreviousLine true',
+    'S-Down': 'moveNextLine true',
+    'M-S-f': 'moveNextWord true',
+    'M-S-b': 'movePreviousWord true'
 };
 
 EditorView.prototype.executeCommand = function(commandText) {
@@ -181,9 +183,17 @@ EditorView.prototype.executeCommand = function(commandText) {
         command = this.commands[commandText];
     }
     for (var i = 0; i < command.length; i++) {
-        var method = this.model[command[i]];
+        var method_name = command[i];
+        var args = [];
+        if (method_name.indexOf(' ') > 0) {
+            var names = method_name.split(' ');
+            method_name = names[0];
+            console.log(names);
+            args = names.slice(1);
+        }
+        var method = this.model[method_name];
         if (method) {
-            method.bind(this.model)();
+            method.apply(this.model, args);
             consumed = true;
         } else {
             console.warn(
@@ -290,6 +300,7 @@ EditorView.prototype.createEventReceiver = function() {
         this.updateCaretIndicator();
     }).bind(this));
     window.onmousedown = function(ev) {
+        this.mouseSelection = true;
         
     };
     window.onmouseup = (function(ev) {

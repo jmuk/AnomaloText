@@ -53,11 +53,8 @@ EditorModel.prototype.getSelection = function() {
     if (!this.selection)
         return null;
 
-    var e1 = this.selection;
-    var e2 = {
-        line: this.lines.currentIndex(),
-        position: this.caretPosition
-    };
+    var e1 = this.selection.origin;
+    var e2 = this.selection.current;
     if (e2.line < e1.line || (e2.line == e1.line &&
                               e2.position < e1.position)) {
         var tmp = e2;
@@ -84,7 +81,18 @@ EditorModel.prototype.moveToPosition = function(leftOffset, lines) {
     this.moveCaret(this.lines.current().getPosition(leftOffset));
 };
 
-EditorModel.prototype.moveBackward = function() {
+EditorModel.prototype.moveBackward = function(select) {
+    if (!select && this.selection) {
+        var s = this.getSelection();
+        this.lines.jumpTo(s.start.line);
+        this.caretPosition = s.start.position;
+        this.selection = null;
+        return;
+    }
+
+    if (select)
+        this.prepareSelection();
+
     var line = this.lines.current();
     if (this.caretPosition == 0) {
         if (this.lines.backward())
@@ -92,9 +100,41 @@ EditorModel.prototype.moveBackward = function() {
     } else {
         this.moveCaret(this.caretPosition - 1);
     }
+
+    if (select)
+        this.postProcessSelection();
 };
 
-EditorModel.prototype.movePreviousWord = function() {
+EditorModel.prototype.moveForward = function(select) {
+    if (!select && this.selection) {
+        var s = this.getSelection();
+        this.lines.jumpTo(s.end.line);
+        this.caretPosition = s.end.position;
+        this.selection = null;
+        return;
+    }
+
+    if (select)
+        this.prepareSelection();
+
+    var line = this.lines.current();
+    if (this.caretPosition == line.length) {
+        if (this.lines.forward())
+            this.moveCaret(0);
+    } else {
+        this.moveCaret(this.caretPosition + 1);
+    }
+
+    if (select)
+        this.postProcessSelection();
+};
+
+EditorModel.prototype.movePreviousWord = function(select) {
+    if (select)
+        this.prepareSelection();
+    else
+        this.selection = null;
+
     if (this.caretPosition == 0) {
         if (!this.lines.backward())
             return;
@@ -113,9 +153,17 @@ EditorModel.prototype.movePreviousWord = function() {
     }
     if (newPosition != null)
         this.caretPosition = newPosition;
+
+    if (select)
+        this.postProcessSelection();
 };
 
-EditorModel.prototype.moveNextWord = function() {
+EditorModel.prototype.moveNextWord = function(select) {
+    if (select)
+        this.prepareSelection();
+    else
+        this.selection = null;
+
     if (this.caretPosition == this.lines.current().length) {
         if (!this.lines.forward())
             return;
@@ -132,19 +180,17 @@ EditorModel.prototype.moveNextWord = function() {
     }
     if (newPosition != null)
         this.caretPosition = newPosition;
+
+    if (select)
+        this.postProcessSelection();
 };
 
-EditorModel.prototype.moveForward = function() {
-    var line = this.lines.current();
-    if (this.caretPosition == line.length) {
-        if (this.lines.forward())
-            this.moveCaret(0);
-    } else {
-        this.moveCaret(this.caretPosition + 1);
-    }
-};
+EditorModel.prototype.movePreviousLine = function(select) {
+    if (select)
+        this.prepareSelection();
+    else
+        this.selection = null;
 
-EditorModel.prototype.movePreviousLine = function() {
     if (this.idealCaretOffset == null) {
         this.idealCaretOffset =
             this.lines.current().getOffset(this.caretPosition);
@@ -153,9 +199,17 @@ EditorModel.prototype.movePreviousLine = function() {
         this.caretPosition =
             this.lines.current().getPosition(this.idealCaretOffset);
     }
+
+    if (select)
+        this.postProcessSelection();
 };
 
-EditorModel.prototype.moveNextLine = function() {
+EditorModel.prototype.moveNextLine = function(select) {
+    if (select)
+        this.prepareSelection();
+    else
+        this.selection = null;
+
     if (this.idealCaretOffset == null) {
         this.idealCaretOffset =
             this.lines.current().getOffset(this.caretPosition);
@@ -164,6 +218,9 @@ EditorModel.prototype.moveNextLine = function() {
         this.caretPosition =
             this.lines.current().getPosition(this.idealCaretOffset);
     }
+
+    if (select)
+        this.postProcessSelection();
 };
 
 EditorModel.prototype.moveToStartOfLine = function() {
@@ -177,10 +234,21 @@ EditorModel.prototype.moveToEndOfLine = function() {
 EditorModel.prototype.prepareSelection = function() {
     if (!this.selection) {
         this.selection = {
-            line: this.lines.currentIndex(),
-            position: this.caretPosition
+            origin: {
+                line: this.lines.currentIndex(),
+                position: this.caretPosition
+            }
         };
     }
+};
+
+EditorModel.prototype.postProcessSelection = function() {
+    if (!this.selection)
+        return null;
+    this.selection.current = {
+        line: this.lines.currentIndex(),
+        position: this.caretPosition
+    };
 };
 
 EditorModel.prototype.copyToClipboard = function() {
@@ -201,7 +269,6 @@ EditorModel.prototype.copyToClipboard = function() {
             selectedText += this.lines.at(
                 selection.end.line).contents.slice(0, selection.end.position);
         }
-        console.log(selectedText);
         this.killring.unshift(selectedText);
     }
 };
