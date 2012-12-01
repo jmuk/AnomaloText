@@ -264,6 +264,17 @@ EditorView.prototype.keydown = function(ev) {
     return !consumed;
 };
 
+// Clear status of focus and enforce it to the edit field.
+EditorView.prototype.enforceFocus = function() {
+    this.receiver.focus();
+    var caretRange = document.createRange();
+    caretRange.setStart(this.receiver, 0);
+    caretRange.setEnd(this.receiver, 0);
+    var selection = window.getSelection();
+    selection.removeAllRanges();
+    selection.addRange(caretRange);
+};
+
 /**
  * Creates an invisible div which receives the key events and passes
  * it to the model.
@@ -299,18 +310,28 @@ EditorView.prototype.createEventReceiver = function() {
         this.caretIndicator.style.visibility = 'visible';
         this.updateCaretIndicator();
     }).bind(this));
-    window.onmousedown = function(ev) {
+    window.onmousedown = (function(ev) {
+        this.enforceFocus();
+
+        ev.preventDefault();
         this.mouseSelection = true;
-        
-    };
+        var lines = Math.floor(ev.pageY / this.lineHeight);
+        this.model.startMouseSelection(ev.pageX, lines);
+        this.updateCaretIndicator();
+    }).bind(this);
+    window.onmousemove = (function(ev) {
+        if (!this.mouseSelection)
+            return true;
+
+        this.enforceFocus();
+        ev.preventDefault();
+        var lines = Math.floor(ev.pageY / this.lineHeight);
+        this.model.updateMouseSelection(ev.pageX, lines);
+        this.updateCaretIndicator();
+    }).bind(this);
     window.onmouseup = (function(ev) {
-        this.receiver.focus();
-        var caretRange = document.createRange();
-        caretRange.setStart(this.receiver, 0);
-        caretRange.setEnd(this.receiver, 0);
-        var selection = window.getSelection();
-        selection.removeAllRanges();
-        selection.addRange(caretRange);
+        this.enforceFocus();
+        this.mouseSelection = false;
 
         var lines = Math.floor(ev.pageY / this.lineHeight);
         this.model.moveToPosition(ev.pageX, lines);

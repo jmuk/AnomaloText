@@ -76,6 +76,29 @@ EditorModel.prototype.moveCaret = function(newPosition) {
     this.idealCaretOffset = null;
 };
 
+EditorModel.prototype.startMouseSelection = function(leftOffset, lines) {
+    this.selection = {};
+    this.selection.origin = {
+        line: lines,
+        position: this.lines.at(lines).getPosition(leftOffset)
+    };
+    this.selection.current = {
+        line: lines,
+        position: this.lines.at(lines).getPosition(leftOffset)
+    };
+};
+
+EditorModel.prototype.updateMouseSelection = function(leftOffset, lines) {
+    if (!this.selection) {
+        console.error('selection is missing during mouse selection?');
+        return;
+    }
+    this.selection.current = {
+        line: lines,
+        position: this.lines.at(lines).getPosition(leftOffset)
+    };
+};
+
 EditorModel.prototype.moveToPosition = function(leftOffset, lines) {
     this.lines.jumpTo(lines);
     this.moveCaret(this.lines.current().getPosition(leftOffset));
