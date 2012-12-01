@@ -275,6 +275,15 @@ EditorView.prototype.enforceFocus = function() {
     selection.addRange(caretRange);
 };
 
+EditorView.prototype.getLocationInContentArea = function(ev) {
+    var result = {
+        x: ev.pageX - this.editor.offsetLeft,
+        y: ev.pageY - this.editor.offsetTop
+    };
+    result.lines = Math.floor(result.y / this.lineHeight);
+    return result;
+};
+
 /**
  * Creates an invisible div which receives the key events and passes
  * it to the model.
@@ -312,11 +321,10 @@ EditorView.prototype.createEventReceiver = function() {
     }).bind(this));
     window.onmousedown = (function(ev) {
         this.enforceFocus();
-
         ev.preventDefault();
         this.mouseSelection = true;
-        var lines = Math.floor(ev.pageY / this.lineHeight);
-        this.model.startMouseSelection(ev.pageX, lines);
+        var loc = this.getLocationInContentArea(ev);
+        this.model.startMouseSelection(loc.x, loc.lines);
         this.updateCaretIndicator();
     }).bind(this);
     window.onmousemove = (function(ev) {
@@ -325,16 +333,17 @@ EditorView.prototype.createEventReceiver = function() {
 
         this.enforceFocus();
         ev.preventDefault();
-        var lines = Math.floor(ev.pageY / this.lineHeight);
-        this.model.updateMouseSelection(ev.pageX, lines);
+        var loc = this.getLocationInContentArea(ev);
+        this.model.updateMouseSelection(loc.x, loc.lines);
         this.updateCaretIndicator();
+        return false;
     }).bind(this);
     window.onmouseup = (function(ev) {
         this.enforceFocus();
         this.mouseSelection = false;
 
-        var lines = Math.floor(ev.pageY / this.lineHeight);
-        this.model.moveToPosition(ev.pageX, lines);
+        var loc = this.getLocationInContentArea(ev);
+        this.model.moveToPosition(loc.x, loc.lines);
         this.updateCaretIndicator();
     }).bind(this);
     
