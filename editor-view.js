@@ -168,7 +168,43 @@ EditorView.prototype.commands = {
     'S-Down': ['prepareSelection', 'moveNextLine']
 };
 
-EditorView.prototype.onKeyDown = function(ev) {
+EditorView.prototype.executeCommand = function(commandText) {
+    if (!(commandText in this.commands))
+        return false;
+
+    var consumed = false;
+    // Assumes commandText is a string or an array.
+    var command;
+    if (typeof(this.commands[commandText]) == 'string') {
+        command = [this.commands[commandText]];
+    } else {
+        command = this.commands[commandText];
+    }
+    for (var i = 0; i < command.length; i++) {
+        var method = this.model[command[i]];
+        if (method) {
+            method.bind(this.model)();
+            consumed = true;
+        } else {
+            console.warn(
+                'cannot find method for ' + this.commands[commandText]);
+        }
+    }
+    return consumed;
+};
+
+EditorView.prototype.input = function(ev) {
+    if (this.receiver.incomposition)
+        return false;
+
+    this.model.insertText(this.receiver.textContent);
+    ev.preventDefault();
+    this.receiver.textContent = '';
+    this.updateCaretIndicator();
+    return false;
+};
+
+EditorView.prototype.keydown = function(ev) {
     // see: https://github.com/jmuk/chrome-skk/blob/master/testpage/mock.js
     var keyMap = {
         8:"Backspace", 9:"Tab", 13:"Enter", 27:"Esc", 32:" ", 33:"PageUp",
@@ -185,57 +221,33 @@ EditorView.prototype.onKeyDown = function(ev) {
         120:"AudioVolumeDown", 121:"AudioVolumeUp", 186:";", 187:"=", 188:",",
         189:"-", 190:".", 191:"/", 192:"`", 219:"[",  220:"\\", 221:"]", 222:"'"
     };
-    var shiftKeyMap = {
-        192:"~", 48:")", 49:"!", 50:"@", 51:"#", 52:"$", 53:"%", 54:"^", 55:"&",
-        56:"*", 57:"(", 109:"_", 61:"+", 219:"{", 221:"}", 220:"|", 59:":",
-        222:"\"", 187:"+", 188:"<", 189:"_", 190:">", 191:"?", 192: '~'
-    };
 
     if (this.receiver.incomposition)
         return true;
 
-    var key = (ev.shiftKey) ?
-        (shiftKeyMap[ev.keyCode] || keyMap[ev.keyCode]) : keyMap[ev.keyCode];
-    var shiftKey = ev.shiftKey;
-    if (ev.shiftKey && key && key.length == 1) {
-        key = key.toUpperCase();
-        shiftKey = false;
+    function isNormalKey(keyCode) {
+        return (keyCode == 32 || keyCode == 43 ||
+                (keyCode >= 48 && keyCode <= 111) ||
+                (keyCode >= 186 && keyCode <= 192) ||
+                (keyCode >= 219 && keyCode <= 222));
     }
 
-    var consumed = false;
-    if (key != null) {
-        var commandText = key;
-        if (shiftKey)
-            commandText = 'S-' + commandText;
-        if (ev.altKey)
-            commandText = 'M-' + commandText;
-        if (ev.ctrlKey)
-            commandText = 'C-' + commandText;
+    if (isNormalKey(ev.keyCode) && !ev.ctrlKey && !ev.altKey)
+        return true;
 
-        if (commandText in this.commands) {
-            // Assumes commandText is a string or an array.
-            var command;
-            if (typeof(this.commands[commandText]) == 'string') {
-                command = [this.commands[commandText]];
-            } else {
-                command = this.commands[commandText];
-            }
-            for (var i = 0; i < command.length; i++) {
-                var method = this.model[command[i]];
-                if (method) {
-                    method.bind(this.model)();
-                    consumed = true;
-                } else {
-                    console.warn(
-                        'cannot find method for ' + this.commands[commandText]);
-                }
-            }
-        } else if (commandText.length == 1) {
-            this.model.insertText(commandText);
-            consumed = true;
-        }
-    }
-    this.receiver.textContent = '';
+    var key = keyMap[ev.keyCode];
+    if (!key)
+        return true;
+
+    var commandText = key;
+    if (ev.shiftKey)
+        commandText = 'S-' + commandText;
+    if (ev.altKey)
+        commandText = 'M-' + commandText;
+    if (ev.ctrlKey)
+        commandText = 'C-' + commandText;
+
+    var consumed = this.executeCommand(commandText);
     this.updateCaretIndicator();
     if (consumed)
         ev.preventDefault();
@@ -262,7 +274,8 @@ EditorView.prototype.createEventReceiver = function() {
     receiver.style.outline = '0';
     receiver.style.backgroundColor = 'white';
     receiver.contentEditable = true;
-    receiver.onkeydown = this.onKeyDown.bind(this);
+    receiver.addEventListener('keydown', this.keydown.bind(this));
+    receiver.addEventListener('input', this.input.bind(this));
     receiver.addEventListener('compositionstart', (function(ev) {
         this.receiver.incomposition = true;
         this.receiverContainer.style.zIndex = 
@@ -272,12 +285,13 @@ EditorView.prototype.createEventReceiver = function() {
     receiver.addEventListener('compositionend', (function(ev) {
         this.receiverContainer.style.zIndex =
             EditorZIndice.HIDDEN;
-        this.model.insertText(ev.data);
-        this.receiver.textContent = '';
         this.receiver.incomposition = false;
         this.caretIndicator.style.visibility = 'visible';
         this.updateCaretIndicator();
     }).bind(this));
+    window.onmousedown = function(ev) {
+        
+    };
     window.onmouseup = (function(ev) {
         this.receiver.focus();
         var caretRange = document.createRange();
@@ -295,7 +309,6 @@ EditorView.prototype.createEventReceiver = function() {
     receiverContainer.appendChild(receiver);
     this.editor = document.getElementById('editor');
     this.editor.appendChild(receiverContainer);
-    this.editor.style.zIndex = EditorZIndice.BACKGROUND;
     receiver.focus();
 
     var indicator = document.createElement('div');
