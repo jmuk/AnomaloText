@@ -49,6 +49,14 @@ EditorModel.prototype.getCurrentElement = function() {
         this.caretPosition);
 };
 
+EditorModel.prototype.getLines = function() {
+    var lines = [];
+    for (var i = 0; i < this.lines.length; i++) {
+        lines.push(this.lines.at(i).contents);
+    }
+    return lines;
+}
+
 EditorModel.prototype.getSelection = function() {
     if (!this.selection)
         return null;
@@ -393,6 +401,19 @@ EditorModel.prototype.newLine = function() {
     this.insertText('\n');
 };
 
+EditorModel.prototype.incrementIndent = function() {
+    var currentLine = this.lines.current();
+    currentLine.fixIndent(currentLine.indentLength + this.tabWidth);
+    this.moveCaret(currentLine.indentLength);
+};
+
+EditorModel.prototype.decrementIndent = function() {
+    var currentLine = this.lines.current();
+    var newIndent = Math.max(currentLine.indentLength - this.tabWidth, 0);
+    currentLine.fixIndent(newIndent);
+    this.moveCaret(currentLine.indentLength);
+}
+
 EditorModel.prototype.insertText = function(text) {
     if (this.selection)
         this.deleteSelection();
@@ -404,15 +425,55 @@ EditorModel.prototype.insertText = function(text) {
         this.lines.remove();
         newLines[0].insertTextAt(lines[0], newLines[0].length);
         this.lines.insert(newLines[0]);
+        var newLineIndex = this.lines.currentIndex();
         for (var i = 1; i < lines.length - 1; i++) {
             this.lines.insert(new EditorLineModel(lines[i]));
         }
         newLines[1].insertTextAt(lines[lines.length - 1], 0);
         this.lines.insert(newLines[1]);
         this.lines.backward();
-        this.moveCaret(lines[lines.length - 1].length);
+
+        var lastIndent = 0;
+        for (var i = 0; i < lines.length - 1; i++) {
+            var index = newLineIndex + i;
+            lastIndent = GetIndentAt(this.getLines(), index);
+            this.lines.at(index).fixIndent(lastIndent);
+        }
+
+        this.moveCaret(lines[lines.length - 1].length + lastIndent);
     } else {
         this.lines.current().insertTextAt(text, this.caretPosition);
         this.moveCaret(this.caretPosition + text.length);
     }
+};
+
+EditorModel.prototype.tabWidth = 2;
+
+// TODO: GetIndentAt has to be a part of a mode.
+function GetIndentAt(lines, target) {
+    var counter = 0;
+    var index = target - 1;
+    while (index > 0) {
+        var line = lines[index];
+        for (var i = line.length - 1; i >= 0; i--) {
+            if ("({[".indexOf(line[i]) >= 0) {
+                counter = Math.max(counter - 1, 0);
+            } else if (")}]".indexOf(line[i]) >= 0) {
+                counter++;
+            }
+        }
+        if (counter == 0)
+            break;
+        index--;
+    }
+    if (index < 0)
+        return 0;
+    var baseLine = lines[index];
+    var baseIndent = /^\s*/.exec(baseLine)[0].length;
+    var prevLine = lines[target - 1].replace(/\s*$/, "");
+    if (prevLine.length > 0 &&
+        "({[:".indexOf(prevLine[prevLine.length - 1]) >= 0) {
+        return baseIndent + EditorModel.prototype.tabWidth;
+    }
+    return baseIndent;
 };

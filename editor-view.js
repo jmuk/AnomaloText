@@ -167,7 +167,9 @@ EditorView.prototype.commands = {
     'S-Up': 'movePreviousLine true',
     'S-Down': 'moveNextLine true',
     'M-S-f': 'moveNextWord true',
-    'M-S-b': 'movePreviousWord true'
+    'M-S-b': 'movePreviousWord true',
+    'Tab': 'incrementIndent',
+    'S-Tab': 'decrementIndent'
 };
 
 EditorView.prototype.executeCommand = function(commandText) {

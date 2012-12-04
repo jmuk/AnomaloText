@@ -2,8 +2,9 @@ function EditorLineModel(line) {
     this.contents = line;
     this.length = line.length;
     var data = this.parseLine(line);
-    this.tokens = data[0];
-    this.words = data[1];
+    this.tokens = data.tokens;
+    this.words = data.words;
+    this.indentLength = data.indentLength;
     this.linebreak = document.createElement('br');
 }
 
@@ -28,8 +29,10 @@ EditorLineModel.prototype.parseLine = function(line) {
         }
         return new RegExp('^(' + escaped_words.join('|') + ')\\b');
     }
-    var tokens = [];
-    var word_segments = [];
+    var result = {};
+    result.tokens = [];
+    result.words = [];
+    result.indentLength = /^\s*/.exec(line)[0].length;
     var keywords = BuildUnionRegexp([
         'and', 'del', 'for', 'is', 'raise',
         'assert', 'elif', 'from', 'lambda', 'return',
@@ -55,7 +58,7 @@ EditorLineModel.prototype.parseLine = function(line) {
             if (m) {
                 length = m[0].length;
                 tokenType = words[i].type;
-                word_segments.push(
+                result.words.push(
                     {start: index, end: index + length});
                 break;
             }
@@ -63,12 +66,12 @@ EditorLineModel.prototype.parseLine = function(line) {
         if (!tokenType && isParen(line[0])) {
             tokenType = 'paren';
         }
-        tokens.push.apply(
-            tokens, Token.getTokens(line.slice(0, length), tokenType));
+        result.tokens.push.apply(
+            result.tokens, Token.getTokens(line.slice(0, length), tokenType));
         line = line.slice(length);
         index += length;
     }
-    return [tokens, word_segments];
+    return result;
 };
 
 EditorLineModel.prototype.getOffset = function(position) {
@@ -171,6 +174,35 @@ EditorLineModel.prototype.deleteCharAt = function(position) {
     this.deleteCharsIn(position, position + 1);
 };
 
+EditorLineModel.prototype.fixIndent = function(length) {
+    if (this.indentLength == length)
+	return;
+    if (this.indentLength > length) {
+	var removeLength = this.indentLength - length;
+	this.length -= removeLength;
+	this.indentLength -= removeLength;
+	while (removeLength > 0 && this.tokens.length > 0) {
+	    var token = this.tokens[0];
+	    removeLength -= token.length;
+	    token.element.parentNode.removeChild(token.element);
+	    this.tokens.shift();
+	}
+    } else {
+	var fillLength = length - this.indentLength;
+	var element =
+	    (this.tokens.length > 0) ? this.tokens[0].element : this.linebreak;
+	for (var i = 0; i < fillLength; i++) {
+	    var token = new Token(' ', 'space', '');
+	    token.createElement();
+	    element.parentNode.insertBefore(token.element, element);
+	    this.tokens.unshift(token);
+	}
+	this.contents = (new Array(fillLength + 1)).join(" ") + this.contents;
+	this.length += fillLength;
+	this.indentLength += fillLength;
+    }
+};
+
 EditorLineModel.prototype.insertTextAt = function(chunk, position) {
     if (chunk.length == 0)
         return;
@@ -266,7 +298,7 @@ function replaceElements(olds, news, container, nextElement) {
 
 EditorLineModel.prototype.updateContents = function(newContents) {
     var parseData = this.parseLine(newContents);
-    var newTokens = parseData[0];
+    var newTokens = parseData.tokens;
     var old_s = 0, new_s = 0;
     var old_e = this.tokens.length - 1, new_e = newTokens.length - 1;
     for (; old_e >= 0 && new_e >= 0; old_e--, new_e--) {
@@ -297,5 +329,6 @@ EditorLineModel.prototype.updateContents = function(newContents) {
     }
     this.contents = newContents;
     this.length = newContents.length;
-    this.words = parseData[1];
+    this.words = parseData.words;
+    this.indentLength = parseData.indentLength;
 };
