@@ -1,7 +1,8 @@
-function EditorLineModel(line) {
+function EditorLineModel(model, line) {
+    this.model = model;
     this.contents = line;
     this.length = line.length;
-    var data = this.parseLine(line);
+    var data = this.segmentWords(line);
     this.tokens = data.tokens;
     this.words = data.words;
     this.indentLength = data.indentLength;
@@ -18,60 +19,86 @@ EditorLineModel.prototype.addElementsToContents = function(contents) {
     contents.appendChild(this.linebreak);
 };
 
-// TODO: this has to respect the current mode.  That's why it's a
-// method rather than a function.
-EditorLineModel.prototype.parseLine = function(line) {
-    function BuildUnionRegexp(words) {
-        escaped_words = [];
-        for (var i = 0; i < words.length; i++) {
-            escaped_words.push(
-                words[i].replace(/([.*+?^=!:${}()|[\]\/\\])/g, "\\$1"));
-        }
-        return new RegExp('^(' + escaped_words.join('|') + ')\\b');
-    }
+EditorLineModel.prototype.segmentWords = function(line) {
+    var pattern = this.model.mode.pattern;
     var result = {};
+    var index = 0;
     result.tokens = [];
     result.words = [];
     result.indentLength = /^\s*/.exec(line)[0].length;
-    var keywords = BuildUnionRegexp([
-        'and', 'del', 'for', 'is', 'raise',
-        'assert', 'elif', 'from', 'lambda', 'return',
-        'break', 'else', 'global', 'not', 'try',
-        'class', 'except', 'if', 'or', 'while',
-        'continue', 'exec', 'import', 'pass', 'yield',
-        'def', 'finally', 'in', 'print', 'True', 'False'
-    ]);
-    var words = [
-        {re: keywords, type:'reserved'},
-        {re: /^#.*/, type: 'comment'},
-        {re: /^@[a-zA-Z_0-9]+/, type: 'keyword'},
-        {re: /^('(\\'|.)*?'|"(\\\"|.)*?")/, type: 'string'},
-        {re:/^[a-zA-Z_0-9]+/, type:null}
-    ];
-    
-    var index = 0;
-    while (line.length > 0) {
-        var length = 1;
-        var tokenType = null;
-        for (var i = 0; i < words.length; i++) {
-            var m = line.match(words[i].re);
-            if (m) {
-                length = m[0].length;
-                tokenType = words[i].type;
-                result.words.push(
-                    {start: index, end: index + length});
-                break;
-            }
-        }
-        if (!tokenType && isParen(line[0])) {
-            tokenType = 'paren';
-        }
-        result.tokens.push.apply(
-            result.tokens, Token.getTokens(line.slice(0, length), tokenType));
-        line = line.slice(length);
-        index += length;
+    var tokens = Token.getTokens(line, null);
+    for (var i = 0; i < tokens.length; i++) {
+	var token = tokens[i];
+	while (token) {
+	    var m = token.text.match(pattern);
+	    if (m && m[0].length > 0) {
+		if (m.index > 0) {
+		    var next = token.splitAt(m.index);
+		    result.tokens.push(token);
+		    token = next;
+		}
+		var length = m[0].length;
+		var next = token.splitAt(length);
+		result.tokens.push(token);
+		result.words.push({start: index, end: index + length});
+		index += length;
+		token = next;
+	    } else {
+		result.tokens.push(token);
+		index += token.length;
+		break;
+	    }
+	}
     }
     return result;
+};
+
+EditorLineModel.prototype.applyHighlight = function(ranges) {
+    var result = [];
+    var offset = 0;
+    var token_index = 0;
+    var range_index = 0;
+    while (token_index < this.tokens.length && range_index < ranges.length) {
+	var token = this.tokens[token_index];
+	var range = ranges[range_index];
+	if (offset + token.length <= range.start) {
+	    offset += token.length;
+	    token.setClass(null);
+	    result.push(token);
+	    token_index++;
+	    continue;
+	}
+	if (offset > range.start) {
+	    range_index++;
+	    continue;
+	}
+	if (offset == range.start) {
+	    if (offset + token.length > range.end) {
+		var trailing = token.splitAt(range.end - offset);
+		token.setClass(range.type);
+		this.tokens[token_index] = trailing;
+		range_index++;
+	    } else {
+		token.setClass(range.type);
+		token_index++;
+		if (offset + token.length == range.end)
+		    range_index++;
+		else
+		    range.start = offset + token.length;
+	    }
+	} else {
+	    var trailing = token.splitAt(range.start - offset);
+	    token.setClass(null);
+	    this.tokens[token_index] = trailing;
+	}
+	offset += token.length;
+	result.push(token);
+    }
+    for (; token_index < this.tokens.length; token_index++) {
+	this.tokens[token_index].setClass(null);
+	result.push(this.tokens[token_index]);
+    }
+    this.tokens = result;
 };
 
 EditorLineModel.prototype.getOffset = function(position) {
@@ -297,7 +324,7 @@ function replaceElements(olds, news, container, nextElement) {
 };
 
 EditorLineModel.prototype.updateContents = function(newContents) {
-    var parseData = this.parseLine(newContents);
+    var parseData = this.segmentWords(newContents);
     var newTokens = parseData.tokens;
     var old_s = 0, new_s = 0;
     var old_e = this.tokens.length - 1, new_e = newTokens.length - 1;

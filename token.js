@@ -40,21 +40,44 @@ Token.prototype.setText = function(text) {
         return;
     this.text = text;
     this.length = text.length;
-    this.element.textContent = text;
+    if (this.element)
+	this.element.textContent = text;
 };
 
 Token.prototype.setClass = function(newClass) {
     if (this.tokenClass == newClass)
 	return;
     this.tokenClass = newClass;
-    if (!newClass)
-	this.element.className = '';
-    else
-	this.element.className = newClass;
-}
+    if (this.element) {
+	if (!newClass)
+	    this.element.className = '';
+	else
+	    this.element.className = newClass;
+    }
+};
 
 Token.prototype.equalsTo = function(another) {
     return (this.type == another.type && this.text == another.text);
+};
+
+Token.prototype.splitAt = function(position) {
+    if (position == 0 || position >= this.length)
+	return null;
+
+    var trailing = new Token(
+	this.text.slice(position), this.type, this.tokenClass);
+    this.setText(this.text.slice(0, position));
+    if (this.element) {
+	trailing.createElement();
+	var parent = this.element.parentNode;
+	if (parent.lastChild == this.element) {
+	    parent.appendChild(trailing.element);
+	} else {
+	    parent.insertBefore(
+		trailing.element, this.element.nextSibling);
+	}
+    }
+    return trailing;
 };
 
 /**

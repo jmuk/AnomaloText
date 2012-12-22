@@ -1,8 +1,14 @@
 function EditorModel(contents) {
-    this.Init(contents);
     this.caretPosition = 0;
     this.idealCaretOffset = null;
     this.selection = null;
+    this.mode = new Worker('python-mode.js');
+    this.mode.addEventListener('message', this.modeMessageHandler.bind(this));
+    this.mode.postMessage({command:'metadata'});
+    this.mode.pattern = /[a-zA-Z_0-9]+/;
+    this.editingCount = 0;
+    this.Init(contents);
+    this.askHighlight();
     // TODO: this has to be merged into the system clipboard.
     this.killring = [];
 }
@@ -11,9 +17,53 @@ EditorModel.prototype.Init = function(contents) {
     var lines = contents.split('\n');
     var lineData = [];
     for (var i = 0; i < lines.length; i++) {
-        lineData.push(new EditorLineModel(lines[i]));
+        lineData.push(new EditorLineModel(this, lines[i]));
     }
     this.lines = new Zipper(lineData);
+};
+
+EditorModel.prototype.modeMessageHandler = function(e) {
+    if (e.data.command == 'metadata') {
+        this.mode.pattern = e.data.pattern;
+        this.mode.parens = e.data.parens;
+        return;
+    }
+
+    if (this.editingCount != e.data.id)
+        return;
+
+    var ranges = e.data.range;
+    var offset = 0;
+    for (var i = 0; i < this.lines.length; i++) {
+        var lineRanges = [];
+        var line = this.lines.at(i);
+        for (var j = 0; j < ranges.length; j++) {
+            if (ranges[j].end >= offset + line.length + 1)
+                break;
+            lineRanges.push(
+                {start:ranges[j].start - offset,
+                 end: ranges[j].end - offset,
+                 type: ranges[j].type});
+        }
+        ranges = ranges.slice(j);
+        line.applyHighlight(lineRanges);
+        if (ranges.length == 0)
+            break;
+        // +1 to count the linebreak.
+        offset += line.length + 1;
+    }
+};
+
+EditorModel.prototype.askHighlight = function() {
+    this.editingCount++;
+    var lines = [];
+    for (var i = 0; i < this.lines.length; i++) {
+        lines.push(this.lines.at(i).contents);
+    }
+    this.mode.postMessage({command:'highlight',
+                           id: this.editingCount,
+                           contents: lines.join('\n') + '\n'
+                          });
 };
 
 EditorModel.prototype.addElementsToContents = function(content) {
@@ -354,6 +404,7 @@ EditorModel.prototype.deleteSelection = function() {
         }
     }
     this.selection = null;
+    this.askHighlight();
 };
 
 EditorModel.prototype.deletePreviousChar = function() {
@@ -375,6 +426,7 @@ EditorModel.prototype.deletePreviousChar = function() {
         line.deleteCharAt(this.caretPosition - 1);
         this.moveCaret(this.caretPosition - 1);
     }
+    this.askHighlight();
 };
 
 EditorModel.prototype.deleteNextChar = function() {
@@ -395,6 +447,7 @@ EditorModel.prototype.deleteNextChar = function() {
     } else {
         line.deleteCharAt(this.caretPosition);
     }
+    this.askHighlight();
 };
 
 EditorModel.prototype.newLine = function() {
@@ -412,7 +465,7 @@ EditorModel.prototype.decrementIndent = function() {
     var newIndent = Math.max(currentLine.indentLength - this.tabWidth, 0);
     currentLine.fixIndent(newIndent);
     this.moveCaret(currentLine.indentLength);
-}
+};
 
 EditorModel.prototype.insertText = function(text) {
     if (this.selection)
@@ -427,7 +480,7 @@ EditorModel.prototype.insertText = function(text) {
         this.lines.insert(newLines[0]);
         var newLineIndex = this.lines.currentIndex();
         for (var i = 1; i < lines.length - 1; i++) {
-            this.lines.insert(new EditorLineModel(lines[i]));
+            this.lines.insert(new EditorLineModel(this, lines[i]));
         }
         newLines[1].insertTextAt(lines[lines.length - 1], 0);
         this.lines.insert(newLines[1]);
@@ -445,6 +498,7 @@ EditorModel.prototype.insertText = function(text) {
         this.lines.current().insertTextAt(text, this.caretPosition);
         this.moveCaret(this.caretPosition + text.length);
     }
+    this.askHighlight();
 };
 
 EditorModel.prototype.tabWidth = 2;
