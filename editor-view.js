@@ -30,9 +30,18 @@ EditorView.prototype.updateHeight = function() {
 
 EditorView.prototype.updateCaretIndicator = function() {
     var caretPosition = this.model.getCaretPosition();
+    var top = caretPosition.lines * this.lineHeight;
+    var bottom = top + this.lineHeight;
+    var offsetTop = this.editor.offsetTop;
+    if (top + offsetTop < window.scrollY) {
+        window.scrollBy(0, top + offsetTop - window.scrollY);
+    }
+    if (bottom + offsetTop > window.scrollY + window.innerHeight) {
+        window.scrollBy(0, bottom + offsetTop -
+                        window.scrollY - window.innerHeight);
+    }
     this.caretIndicator.style.left = caretPosition.leftOffset + 'px';
-    this.caretIndicator.style.top =
-        caretPosition.lines * this.lineHeight + 'px';
+    this.caretIndicator.style.top = top + 'px';
     this.receiverContainer.style.top = this.caretIndicator.style.top;
     this.receiverSpacer.style.width = this.caretIndicator.style.left;
     this.maybeHighlightParens();
