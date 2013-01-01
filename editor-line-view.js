@@ -1,4 +1,4 @@
-function EditorLineModel(model, line) {
+function EditorLineView(model, line) {
     this.model = model;
     this.contents = line;
     this.length = line.length;
@@ -9,7 +9,7 @@ function EditorLineModel(model, line) {
     this.linebreak = document.createElement('br');
 }
 
-EditorLineModel.prototype.addElementsToContents = function(contents) {
+EditorLineView.prototype.addElementsToContents = function(contents) {
     for (var i = 0; i < this.tokens.length; i++) {
         var token = this.tokens[i];
         if (!token.element)
@@ -19,7 +19,7 @@ EditorLineModel.prototype.addElementsToContents = function(contents) {
     contents.appendChild(this.linebreak);
 };
 
-EditorLineModel.prototype.segmentWords = function(line) {
+EditorLineView.prototype.segmentWords = function(line) {
     var pattern = this.model.mode.pattern;
     var result = {};
     var index = 0;
@@ -53,7 +53,7 @@ EditorLineModel.prototype.segmentWords = function(line) {
     return result;
 };
 
-EditorLineModel.prototype.applyHighlight = function(ranges) {
+EditorLineView.prototype.applyHighlight = function(ranges) {
     var result = [];
     var offset = 0;
     var token_index = 0;
@@ -101,7 +101,7 @@ EditorLineModel.prototype.applyHighlight = function(ranges) {
     this.tokens = result;
 };
 
-EditorLineModel.prototype.getOffset = function(position) {
+EditorLineView.prototype.getOffset = function(position) {
     var offset = 0;
     for (var i = 0; i < this.tokens.length; i++) {
         var token = this.tokens[i];
@@ -117,7 +117,7 @@ EditorLineModel.prototype.getOffset = function(position) {
     return offset;
 };
 
-EditorLineModel.prototype.getPosition = function(offset) {
+EditorLineView.prototype.getPosition = function(offset) {
     var position = 0;
     for (var i = 0; i < this.tokens.length; i++) {
         var token = this.tokens[i];
@@ -133,7 +133,7 @@ EditorLineModel.prototype.getPosition = function(offset) {
     return position;
 };
 
-EditorLineModel.prototype.getElementAt = function(position) {
+EditorLineView.prototype.getElementAt = function(position) {
     for (var i = 0; i < this.tokens.length; i++) {
         var token = this.tokens[i];
         if (position < token.length) {
@@ -144,7 +144,7 @@ EditorLineModel.prototype.getElementAt = function(position) {
     return null;
 };
 
-EditorLineModel.prototype.getPreviousWord = function(position) {
+EditorLineView.prototype.getPreviousWord = function(position) {
     if (this.words.length > 0) {
         if (position <= this.words[0].start)
             return null;
@@ -164,7 +164,7 @@ EditorLineModel.prototype.getPreviousWord = function(position) {
     return null;
 };
 
-EditorLineModel.prototype.getNextWord = function(position) {
+EditorLineView.prototype.getNextWord = function(position) {
     for (var i = 0; i < this.words.length; i++) {
         var segment = this.words[i];
         if (segment.start <= position &&
@@ -177,7 +177,7 @@ EditorLineModel.prototype.getNextWord = function(position) {
     return null;
 };
 
-EditorLineModel.prototype.deleteAllChars = function() {
+EditorLineView.prototype.deleteAllChars = function() {
     for (var i = 0; i < this.tokens.length; i++) {
         var token = this.tokens[i];
         if (token.element)
@@ -191,17 +191,17 @@ EditorLineModel.prototype.deleteAllChars = function() {
     this.length = 0;
 };
 
-EditorLineModel.prototype.deleteCharsIn = function(start, end) {
+EditorLineView.prototype.deleteCharsIn = function(start, end) {
     var newContents = this.contents.slice(0, start) +
         this.contents.slice(end);
     this.updateContents(newContents);
 };
 
-EditorLineModel.prototype.deleteCharAt = function(position) {
+EditorLineView.prototype.deleteCharAt = function(position) {
     this.deleteCharsIn(position, position + 1);
 };
 
-EditorLineModel.prototype.fixIndent = function(length) {
+EditorLineView.prototype.fixIndent = function(length) {
     if (this.indentLength == length)
 	return;
     if (this.indentLength > length) {
@@ -230,7 +230,7 @@ EditorLineModel.prototype.fixIndent = function(length) {
     }
 };
 
-EditorLineModel.prototype.insertTextAt = function(chunk, position) {
+EditorLineView.prototype.insertTextAt = function(chunk, position) {
     if (chunk.length == 0)
         return;
 
@@ -239,7 +239,7 @@ EditorLineModel.prototype.insertTextAt = function(chunk, position) {
     this.updateContents(newContents);
 };
 
-EditorLineModel.prototype.concat = function(another) {
+EditorLineView.prototype.concat = function(another) {
     this.linebreak.parentNode.removeChild(this.linebreak);
     this.linebreak = another.linebreak;
     this.tokens = this.tokens.concat(another.tokens);
@@ -247,16 +247,16 @@ EditorLineModel.prototype.concat = function(another) {
     this.contents += another.contents;
 };
 
-EditorLineModel.prototype.splitAt = function(position) {
+EditorLineView.prototype.splitAt = function(position) {
     if (position == 0) {
-        var newLine = new EditorLineModel('');
+        var newLine = new EditorLineView('');
         var nextElement = (this.tokens.length == 0) ?
             this.linebreak : this.tokens[0].element;
         nextElement.parentNode.insertBefore(
             newLine.linebreak, nextElement);
         return [newLine, this];
     } else if (position == this.length) {
-        var newLine = new EditorLineModel('');
+        var newLine = new EditorLineView('');
         var container = this.linebreak.parentNode;
         var nextElement = (container.lastChild == this.linebreak) ?
             null : this.linebreak.nextSibling;
@@ -277,7 +277,7 @@ EditorLineModel.prototype.splitAt = function(position) {
         }
         remaining -= this.tokens[i].length;
     }
-    var newLine = new EditorLineModel('');
+    var newLine = new EditorLineView('');
     if (remaining == 0) {
         // this is easy, split the tokens into two.
         newLine.tokens = this.tokens.slice(i);
@@ -323,7 +323,7 @@ function replaceElements(olds, news, container, nextElement) {
     }
 };
 
-EditorLineModel.prototype.updateContents = function(newContents) {
+EditorLineView.prototype.updateContents = function(newContents) {
     var parseData = this.segmentWords(newContents);
     var newTokens = parseData.tokens;
     var old_s = 0, new_s = 0;

@@ -17,7 +17,7 @@ EditorModel.prototype.Init = function(contents) {
     var lines = contents.split('\n');
     var lineData = [];
     for (var i = 0; i < lines.length; i++) {
-        lineData.push(new EditorLineModel(this, lines[i]));
+        lineData.push(new EditorLineView(this, lines[i]));
     }
     this.lines = new Zipper(lineData);
 };
@@ -480,7 +480,7 @@ EditorModel.prototype.insertText = function(text) {
         this.lines.insert(newLines[0]);
         var newLineIndex = this.lines.currentIndex();
         for (var i = 1; i < lines.length - 1; i++) {
-            this.lines.insert(new EditorLineModel(this, lines[i]));
+            this.lines.insert(new EditorLineView(this, lines[i]));
         }
         newLines[1].insertTextAt(lines[lines.length - 1], 0);
         this.lines.insert(newLines[1]);
