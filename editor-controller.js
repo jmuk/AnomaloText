@@ -7,7 +7,7 @@ var EditorZIndice = {
     HIDDEN: '-3'
 };
 
-function EditorView(model) {
+function EditorController(model) {
     this.model = model;
     this.contentArea = document.getElementById('content-area');
     while (this.contentArea.firstChild)
@@ -23,12 +23,12 @@ function EditorView(model) {
     this.selection = null;
 }
 
-EditorView.prototype.updateHeight = function() {
+EditorController.prototype.updateHeight = function() {
     this.lineHeight = this.contentArea.offsetHeight / this.model.getLineCount();
     this.caretIndicator.style.height = this.lineHeight;
 };
 
-EditorView.prototype.updateCaretIndicator = function() {
+EditorController.prototype.updateCaretIndicator = function() {
     var caretPosition = this.model.getCaretPosition();
     var top = caretPosition.lines * this.lineHeight;
     var bottom = top + this.lineHeight;
@@ -63,7 +63,7 @@ function borderedToken(element, className, container) {
 }
 
 // TODO: move this to View, and use overlay div rather than edit class.
-EditorView.prototype.maybeHighlightParens = function() {
+EditorController.prototype.maybeHighlightParens = function() {
     for (var i = 0; i < this.parens.length; i++) {
         var p = this.parens[i];
         p.parentNode.removeChild(p);
@@ -106,7 +106,7 @@ EditorView.prototype.maybeHighlightParens = function() {
     }
 };
 
-EditorView.prototype.createSelectionDiv = function(left, top, width) {
+EditorController.prototype.createSelectionDiv = function(left, top, width) {
     var div = document.createElement('div');
     div.style.left = left + 'px';
     div.style.top = top + 'px';
@@ -119,7 +119,7 @@ EditorView.prototype.createSelectionDiv = function(left, top, width) {
     this.selection.push(div);
 };
 
-EditorView.prototype.showSelection = function() {
+EditorController.prototype.showSelection = function() {
     if (this.selection) {
         for (var i = 0; i < this.selection.length; ++i) {
             var s = this.selection[i];
@@ -156,7 +156,7 @@ EditorView.prototype.showSelection = function() {
 };
 
 // TODO: the command list has to be customizable.
-EditorView.prototype.commands = {
+EditorController.prototype.commands = {
     'Left': 'moveBackward',
     'Right': 'moveForward',
     'Up': 'movePreviousLine',
@@ -181,7 +181,7 @@ EditorView.prototype.commands = {
     'S-Tab': 'decrementIndent'
 };
 
-EditorView.prototype.executeCommand = function(commandText) {
+EditorController.prototype.executeCommand = function(commandText) {
     if (!(commandText in this.commands))
         return false;
 
@@ -214,7 +214,7 @@ EditorView.prototype.executeCommand = function(commandText) {
     return consumed;
 };
 
-EditorView.prototype.input = function(ev) {
+EditorController.prototype.input = function(ev) {
     if (this.receiver.incomposition)
         return false;
 
@@ -225,7 +225,7 @@ EditorView.prototype.input = function(ev) {
     return false;
 };
 
-EditorView.prototype.keydown = function(ev) {
+EditorController.prototype.keydown = function(ev) {
     // see: https://github.com/jmuk/chrome-skk/blob/master/testpage/mock.js
     var keyMap = {
         8:"Backspace", 9:"Tab", 13:"Enter", 27:"Esc", 32:" ", 33:"PageUp",
@@ -276,7 +276,7 @@ EditorView.prototype.keydown = function(ev) {
 };
 
 // Clear status of focus and enforce it to the edit field.
-EditorView.prototype.enforceFocus = function() {
+EditorController.prototype.enforceFocus = function() {
     this.receiver.focus();
     var caretRange = document.createRange();
     caretRange.setStart(this.receiver, 0);
@@ -286,7 +286,7 @@ EditorView.prototype.enforceFocus = function() {
     selection.addRange(caretRange);
 };
 
-EditorView.prototype.getLocationInContentArea = function(ev) {
+EditorController.prototype.getLocationInContentArea = function(ev) {
     var result = {
         x: ev.pageX - this.editor.offsetLeft,
         y: ev.pageY - this.editor.offsetTop
@@ -299,7 +299,7 @@ EditorView.prototype.getLocationInContentArea = function(ev) {
  * Creates an invisible div which receives the key events and passes
  * it to the model.
  */
-EditorView.prototype.createEventReceiver = function() {
+EditorController.prototype.createEventReceiver = function() {
     var receiverContainer = document.createElement('div');
     receiverContainer.style.position = 'absolute';
     receiverContainer.style.zIndex = EditorZIndice.HIDDEN;
