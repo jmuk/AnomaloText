@@ -17,7 +17,7 @@ EditorModel.prototype.Init = function(contents) {
     var lines = contents.split('\n');
     var lineData = [];
     for (var i = 0; i < lines.length; i++) {
-        lineData.push(new EditorLineView(this, lines[i]));
+        lineData.push(new EditorLineView(lines[i]));
     }
     this.lines = new Zipper(lineData);
 };
@@ -216,24 +216,29 @@ EditorModel.prototype.movePreviousWord = function(select) {
     else
         this.selection = null;
 
-    if (this.caretPosition == 0) {
-        if (!this.lines.backward())
-            return;
-        this.caretPosition = this.lines.current().length;
-    }
-
-    var newPosition =
-        this.lines.current().getPreviousWord(this.caretPosition);
-    while (newPosition == null) {
+    var content = this.lines.current().contents.slice(0, this.caretPosition);
+    while (true) {
+        var non_words = content.split(this.mode.pattern);
+        if (non_words.length > 1) {
+            content = content.slice(0, content.length - non_words[non_words.length - 1].length);
+            break;
+        }
         if (!this.lines.backward()) {
-            this.caretPosition = 0;
+            this.moveCaret(0);
+            if (select)
+                this.postProcessSelection();
             return;
         }
-        newPosition = this.lines.current().getPreviousWord(
-            this.lines.current().length);
+
+        this.caretPosition = this.lines.current().length;
+        content = this.lines.current().contents;
     }
-    if (newPosition != null)
-        this.caretPosition = newPosition;
+
+    var pattern_str = this.mode.pattern.toString();
+    var lastMatcher = RegExp(pattern_str.slice(1, pattern_str.length - 1) + "$");
+    var m = lastMatcher.exec(content);
+    if (m)
+	this.moveCaret(content.length - m[0].length);
 
     if (select)
         this.postProcessSelection();
@@ -245,23 +250,22 @@ EditorModel.prototype.moveNextWord = function(select) {
     else
         this.selection = null;
 
-    if (this.caretPosition == this.lines.current().length) {
-        if (!this.lines.forward())
-            return;
-        this.caretPosition = 0;
-    }
-    var newPosition =
-        this.lines.current().getNextWord(this.caretPosition);
-    while (newPosition == null) {
-        if (!this.lines.forward()) {
-            this.caretPosition = this.lines.current().length;
-            return;
+    var content = this.lines.current().contents.slice(this.caretPosition);
+    while (true) {
+        var m = this.mode.pattern.exec(content);
+        if (m) {
+            this.moveCaret(this.caretPosition + m.index + m[0].length);
+            break;
+        } else {
+            if (this.lines.forward()) {
+                content = this.lines.current().contents;
+                this.caretPosition = 0;
+            } else {
+                this.moveCaret(this.lines.current().length);
+                break;
+            }
         }
-        newPosition = this.lines.current().getNextWord(0);
     }
-    if (newPosition != null)
-        this.caretPosition = newPosition;
-
     if (select)
         this.postProcessSelection();
 };

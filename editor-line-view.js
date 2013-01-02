@@ -1,10 +1,7 @@
-function EditorLineView(model, line) {
-    this.model = model;
+function EditorLineView(line) {
     this.contents = line;
     this.length = line.length;
-    var data = this.segmentWords(line);
-    this.tokens = data.tokens;
-    this.words = data.words;
+    this.tokens = Token.getTokens(line, null);
     this.linebreak = document.createElement('br');
 }
 
@@ -16,39 +13,6 @@ EditorLineView.prototype.addElementsToContents = function(contents) {
         contents.appendChild(this.tokens[i].element);
     }
     contents.appendChild(this.linebreak);
-};
-
-EditorLineView.prototype.segmentWords = function(line) {
-    var pattern = this.model.mode.pattern;
-    var result = {};
-    var index = 0;
-    result.tokens = [];
-    result.words = [];
-    var tokens = Token.getTokens(line, null);
-    for (var i = 0; i < tokens.length; i++) {
-	var token = tokens[i];
-	while (token) {
-	    var m = token.text.match(pattern);
-	    if (m && m[0].length > 0) {
-		if (m.index > 0) {
-		    var next = token.splitAt(m.index);
-		    result.tokens.push(token);
-		    token = next;
-		}
-		var length = m[0].length;
-		var next = token.splitAt(length);
-		result.tokens.push(token);
-		result.words.push({start: index, end: index + length});
-		index += length;
-		token = next;
-	    } else {
-		result.tokens.push(token);
-		index += token.length;
-		break;
-	    }
-	}
-    }
-    return result;
 };
 
 EditorLineView.prototype.applyHighlight = function(ranges) {
@@ -138,39 +102,6 @@ EditorLineView.prototype.getElementAt = function(position) {
             return token.element;
         }
         position -= token.length;
-    }
-    return null;
-};
-
-EditorLineView.prototype.getPreviousWord = function(position) {
-    if (this.words.length > 0) {
-        if (position <= this.words[0].start)
-            return null;
-        if (this.words[this.words.length - 1].end <= position)
-            return this.words[this.words.length - 1].start;
-    }
-
-    for (var i = 0; i < this.words.length; i++) {
-        var segment = this.words[i];
-        if (i > 0 && position <= segment.start) {
-            return this.words[i - 1].start;
-        } else if (segment.start < position &&
-                   position <= segment.end) {
-            return segment.start;
-        }
-    }
-    return null;
-};
-
-EditorLineView.prototype.getNextWord = function(position) {
-    for (var i = 0; i < this.words.length; i++) {
-        var segment = this.words[i];
-        if (segment.start <= position &&
-            position < segment.end) {
-            return segment.end;
-        } else if (position < segment.start) {
-            return segment.end;
-        }
     }
     return null;
 };
@@ -293,8 +224,7 @@ function replaceElements(olds, news, container, nextElement) {
 };
 
 EditorLineView.prototype.updateContents = function(newContents) {
-    var parseData = this.segmentWords(newContents);
-    var newTokens = parseData.tokens;
+    var newTokens = Token.getTokens(newContents);
     var old_s = 0, new_s = 0;
     var old_e = this.tokens.length - 1, new_e = newTokens.length - 1;
     for (; old_e >= 0 && new_e >= 0; old_e--, new_e--) {
@@ -325,5 +255,4 @@ EditorLineView.prototype.updateContents = function(newContents) {
     }
     this.contents = newContents;
     this.length = newContents.length;
-    this.words = parseData.words;
 };
