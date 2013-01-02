@@ -56,14 +56,17 @@ Zipper.prototype.jumpTo = function(i) {
 
 Zipper.prototype.insert = function(element) {
     this.front.push(element);
+    this.length++;
 };
 
 Zipper.prototype.remove = function() {
+    if (this.length > 0)
+	this.length--;
     if (this.back.length == 0)
 	return this.front.pop();
     else
 	return this.back.pop();
-}
+};
 
 Zipper.prototype.at = function(index) {
     if (index < this.front.length)

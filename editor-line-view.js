@@ -15,6 +15,21 @@ EditorLineView.prototype.addElementsToContents = function(contents) {
     contents.appendChild(this.linebreak);
 };
 
+EditorLineView.prototype.addElementsBefore = function(nextline) {
+    if (this.linebreak.parentNode)
+        return;
+
+    var nextElement = (nextline.tokens.length == 0) ? nextline.linebreak : nextline.tokens[0].element;
+    var parent = nextElement.parentNode;
+    for (var i = 0; i < this.tokens.length; i++) {
+        var token = this.tokens[i];
+        if (!token.element)
+            token.createElement();
+        parent.insertBefore(token.element, nextElement);
+    }
+    parent.insertBefore(this.linebreak, nextElement);
+};
+
 EditorLineView.prototype.applyHighlight = function(ranges) {
     var result = [];
     var offset = 0;
@@ -121,9 +136,62 @@ EditorLineView.prototype.deleteAllChars = function() {
 };
 
 EditorLineView.prototype.deleteCharsIn = function(start, end) {
-    var newContents = this.contents.slice(0, start) +
+    this.contents = this.contents.slice(0, start) +
         this.contents.slice(end);
-    this.updateContents(newContents);
+    this.length = this.contents.length;
+    var offset = 0;
+    var startIndex;
+    var endIndex;
+    var startOffset;
+    var endOffset;
+    for (var i = 0; i < this.tokens.length; i++) {
+        var token = this.tokens[i];
+        if (offset <= start && offset + token.length >= start) {
+            startIndex = i;
+            startOffset = start - offset;
+        }
+        if (offset <= end && offset + token.length >= end) {
+            endIndex = i;
+            endOffset = end - offset;
+        }
+        if (endToken)
+            break;
+        offset += token.length;
+    }
+    if (startIndex == endIndex) {
+        var token = this.tokens[startIndex];
+        var newText = token.text.slice(0, startOffset) + token.text.slice(endOffset);
+        if (newText == "") {
+            token.element.parentNode.removeChild(token.element);
+            this.tokens = this.tokens.slice(0, startIndex).concat(
+                this.tokens.slice(endIndex + 1));
+        } else {
+            token.setText(newText);
+        }
+        return;
+    }
+
+    var removeStart;
+    var removeEnd;
+    var startToken = this.tokens[startIndex];
+    if (startOffset == 0) {
+        removeStart = startIndex;
+    } else {
+        startToken.setText(startToken.text.slice(0, startOffset));
+        removeStart = startIndex + 1;
+    }
+    var endToken = this.tokens[endIndex];
+    if (endOffset == endToken.length) {
+        removeEnd = endIndex;
+    } else {
+        endToken.setText(endToken.text.slice(endOffset));
+        removeEnd = endIndex - 1;
+    }
+    for (var i = removeStart; i <= removeEnd; i++) {
+        var token = this.tokens[i];
+        token.element.parentNode.removeChild(token.element);
+    }
+    this.tokens = this.tokens.slice(0, removeStart).concat(this.tokens.slice(removeEnd + 1));
 };
 
 EditorLineView.prototype.deleteCharAt = function(position) {
@@ -133,10 +201,71 @@ EditorLineView.prototype.deleteCharAt = function(position) {
 EditorLineView.prototype.insertTextAt = function(chunk, position) {
     if (chunk.length == 0)
         return;
+    if (this.tokens.length == 0) {
+        this.contents = chunk;
+        this.length = chunk.length;
+        this.tokens = Token.getTokens(chunk, null);
+        var parent = this.linebreak.parentNode;
+        for (var i = 0; i < this.tokens.length; i++) {
+            var token = this.tokens[i];
+            token.createElement();
+            parent.insertBefore(token.element, this.linebreak);
+        }
+        return;
+    }
 
-    var newContents = this.contents.slice(0, position) +
-        chunk + this.contents.slice(position);
-    this.updateContents(newContents);
+    this.contents = this.contents.slice(0, position) + chunk + this.contents.slice(position);
+    this.length = this.contents.length;
+    var p = 0;
+    for (var i = 0; i < this.tokens.length; i++) {
+        var token = this.tokens[i];
+        if (p <= position && p + token.length > position) {
+            // in-token editing.
+            var newText = token.text.slice(0, position - p) + chunk +
+                token.text.slice(position - p);
+            var newTokens = Token.getTokens(newText, null);
+            if (newTokens.length == 1 && newTokens[0].type == token.type) {
+                token.setText(newText);
+            } else {
+                var nextElement = (i < this.tokens.length - 1) ?
+                    this.tokens[i + 1].element : this.linebreak;
+                var parent = nextElement.parentNode;
+                parent.removeChild(token.element);
+                for (var j = 0; j < newTokens.length; j++) {
+                    var newToken = newTokens[j];
+                    newToken.createElement();
+                    parent.insertBefore(newToken.element, nextElement);
+                }
+                this.tokens = this.tokens.slice(0, i).concat(newTokens, this.tokens.slice(i + 1));
+            }
+            return;
+        } else if (p + token.length == position){
+            var previousToken = token;
+            var nextToken;
+            if (i < token.length - 1)
+                nextToken = this.tokens[i + 1];
+            var newTokens = Token.getTokens(chunk, null);
+            if (newTokens.length == 1) {
+                if (previousToken.type == newTokens[0].type) {
+                    previousToken.setText(previousToken.text + chunk);
+                    return;
+                } else if (nextToken.type == newTokens[0].type) {
+                    nextToken.setText(chunk + nextToken.text);
+                    return;
+                }
+            }
+            var nextElement = nextToken ? nextToken.element : this.linebreak;
+            var parent = nextElement.parentNode;
+            for (var j = 0; j < newTokens.length; j++) {
+                var newToken = newTokens[j];
+                newToken.createElement();
+                parent.insertBefore(newToken.element, nextElement);
+            }
+            this.tokens = this.tokens.slice(0, i).concat(newTokens, this.tokens.slice(i));
+            return;
+        }
+        p += token.length;
+    }
 };
 
 EditorLineView.prototype.concat = function(another) {
@@ -221,38 +350,4 @@ function replaceElements(olds, news, container, nextElement) {
         news[i].createElement();
         container.insertBefore(news[i].element, nextElement);
     }
-};
-
-EditorLineView.prototype.updateContents = function(newContents) {
-    var newTokens = Token.getTokens(newContents);
-    var old_s = 0, new_s = 0;
-    var old_e = this.tokens.length - 1, new_e = newTokens.length - 1;
-    for (; old_e >= 0 && new_e >= 0; old_e--, new_e--) {
-       if (!this.tokens[old_e].equalsTo(newTokens[new_e]))
-           break;
-    }
-    for (; old_s <= old_e && new_s <= new_e; old_s++, new_s++) {
-        if (!this.tokens[old_s].equalsTo(newTokens[new_s]))
-            break;
-    }
-
-    if (old_s == old_e && new_s == new_e &&
-        // Edit happens only in a token.  Simply replace the contents.
-        this.tokens[old_e].type == newTokens[new_e].type) {
-        this.tokens[old_e].setText(newTokens[new_e].text);
-        this.tokens[old_e].setClass(newTokens[new_e].tokenClass);
-    } else {
-        // Otherwise, replacing elements.
-        var container = this.linebreak.parentNode;
-        var nextElement = (old_e < this.tokens.length - 1) ?
-            this.tokens[old_e + 1].element : this.linebreak;
-        replaceElements(this.tokens.slice(old_s, old_e + 1),
-                        newTokens.slice(new_s, new_e + 1),
-                        container, nextElement);
-        this.tokens = this.tokens.slice(0, old_s).concat(
-            newTokens.slice(new_s, new_e + 1),
-            this.tokens.slice(old_e + 1));
-    }
-    this.contents = newContents;
-    this.length = newContents.length;
 };

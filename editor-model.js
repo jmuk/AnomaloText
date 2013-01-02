@@ -492,7 +492,9 @@ EditorModel.prototype.insertText = function(text) {
         this.lines.insert(newLines[0]);
         var newLineIndex = this.lines.currentIndex();
         for (var i = 1; i < lines.length - 1; i++) {
-            this.lines.insert(new EditorLineView(this, lines[i]));
+            var newLine = new EditorLineView(lines[i]);
+            newLine.addElementsBefore(this.lines.currentIndex());
+            this.lines.insert(newLine);
         }
         newLines[1].insertTextAt(lines[lines.length - 1], 0);
         this.lines.insert(newLines[1]);
@@ -501,8 +503,14 @@ EditorModel.prototype.insertText = function(text) {
         var lastIndent = 0;
         for (var i = 0; i < lines.length - 1; i++) {
             var index = newLineIndex + i;
+            // set the default indent.
             lastIndent = GetIndentAt(this.getLines(), index);
-            this.lines.at(index).fixIndent(lastIndent);
+            var line = this.lines.at(index);
+            var indent = /\s*/.exec(line.content)[0].length;
+            if (indent < lastIndent) {
+                this.lines.at(index).insertTextAt(
+                    new Array(lastIndent - indent + 1).join(" "), 0);
+            }
         }
 
         this.moveCaret(lines[lines.length - 1].length + lastIndent);
