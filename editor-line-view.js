@@ -5,7 +5,6 @@ function EditorLineView(model, line) {
     var data = this.segmentWords(line);
     this.tokens = data.tokens;
     this.words = data.words;
-    this.indentLength = data.indentLength;
     this.linebreak = document.createElement('br');
 }
 
@@ -25,7 +24,6 @@ EditorLineView.prototype.segmentWords = function(line) {
     var index = 0;
     result.tokens = [];
     result.words = [];
-    result.indentLength = /^\s*/.exec(line)[0].length;
     var tokens = Token.getTokens(line, null);
     for (var i = 0; i < tokens.length; i++) {
 	var token = tokens[i];
@@ -201,35 +199,6 @@ EditorLineView.prototype.deleteCharAt = function(position) {
     this.deleteCharsIn(position, position + 1);
 };
 
-EditorLineView.prototype.fixIndent = function(length) {
-    if (this.indentLength == length)
-	return;
-    if (this.indentLength > length) {
-	var removeLength = this.indentLength - length;
-	this.length -= removeLength;
-	this.indentLength -= removeLength;
-	while (removeLength > 0 && this.tokens.length > 0) {
-	    var token = this.tokens[0];
-	    removeLength -= token.length;
-	    token.element.parentNode.removeChild(token.element);
-	    this.tokens.shift();
-	}
-    } else {
-	var fillLength = length - this.indentLength;
-	var element =
-	    (this.tokens.length > 0) ? this.tokens[0].element : this.linebreak;
-	for (var i = 0; i < fillLength; i++) {
-	    var token = new Token(' ', 'space', '');
-	    token.createElement();
-	    element.parentNode.insertBefore(token.element, element);
-	    this.tokens.unshift(token);
-	}
-	this.contents = (new Array(fillLength + 1)).join(" ") + this.contents;
-	this.length += fillLength;
-	this.indentLength += fillLength;
-    }
-};
-
 EditorLineView.prototype.insertTextAt = function(chunk, position) {
     if (chunk.length == 0)
         return;
@@ -357,5 +326,4 @@ EditorLineView.prototype.updateContents = function(newContents) {
     this.contents = newContents;
     this.length = newContents.length;
     this.words = parseData.words;
-    this.indentLength = parseData.indentLength;
 };

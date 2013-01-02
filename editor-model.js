@@ -455,16 +455,24 @@ EditorModel.prototype.newLine = function() {
 };
 
 EditorModel.prototype.incrementIndent = function() {
-    var currentLine = this.lines.current();
-    currentLine.fixIndent(currentLine.indentLength + this.tabWidth);
-    this.moveCaret(currentLine.indentLength);
+    this.lines.current().insertTextAt(new Array(this.tabWidth + 1).join(" "), 0);
+    var tabWidth = /^\s*/.exec(this.lines.current().contents)[0].length;
+    this.moveCaret(tabWidth);
 };
 
 EditorModel.prototype.decrementIndent = function() {
-    var currentLine = this.lines.current();
-    var newIndent = Math.max(currentLine.indentLength - this.tabWidth, 0);
-    currentLine.fixIndent(newIndent);
-    this.moveCaret(currentLine.indentLength);
+    var currentLine = this.lines.current().contents;
+    var tabWidth = /^\s*/.exec(currentLine)[0].length;
+    if (tabWidth == 0) {
+	return;
+    } else if (tabWidth < this.tabWidth) {
+	this.lines.current().deleteCharsIn(0, tabWidth);
+	tabWidth = 0;
+    } else {
+	this.lines.current().deleteCharsIn(0, this.tabWidth);
+	tabWidth -= this.tabWidth;
+    }
+    this.moveCaret(tabWidth);
 };
 
 EditorModel.prototype.insertText = function(text) {
