@@ -5,14 +5,14 @@ function EditorLineView(line) {
     this.linebreak = document.createElement('br');
 }
 
-EditorLineView.prototype.addElementsToContents = function(contents) {
+EditorLineView.prototype.addElementsToContents = function(container) {
     for (var i = 0; i < this.tokens.length; i++) {
         var token = this.tokens[i];
         if (!token.element)
             token.createElement();
-        contents.appendChild(this.tokens[i].element);
+        container.appendChild(this.tokens[i].element);
     }
-    contents.appendChild(this.linebreak);
+    container.appendChild(this.linebreak);
 };
 
 EditorLineView.prototype.addElementsBefore = function(nextline) {
@@ -249,7 +249,7 @@ EditorLineView.prototype.insertTextAt = function(chunk, position) {
                 if (previousToken.type == newTokens[0].type) {
                     previousToken.setText(previousToken.text + chunk);
                     return;
-                } else if (nextToken.type == newTokens[0].type) {
+                } else if (nextToken && nextToken.type == newTokens[0].type) {
                     nextToken.setText(chunk + nextToken.text);
                     return;
                 }

@@ -15,6 +15,12 @@ Zipper.prototype.currentIndex = function() {
     return this.front.length;
 };
 
+Zipper.prototype.replace = function(newElem) {
+    if (this.back.length == 0)
+	return;
+    this.back[this.back.length - 1] = newElem;
+};
+
 Zipper.prototype.previous = function() {
     if (this.front.length == 0)
 	return null;
@@ -77,8 +83,4 @@ Zipper.prototype.at = function(index) {
 	return this.back[this.back.length - index - 1];
 
     return null;
-};
-
-Zipper.prototype.toList = function() {
-    return this.front + this.back.reverse();
 };
