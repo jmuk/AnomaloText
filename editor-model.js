@@ -11,8 +11,11 @@ function EditorModel(contents) {
     this.askHighlight();
     // TODO: this has to be merged into the system clipboard.
     this.killring = [];
-    this.view = new EditorView(contents);
 }
+
+EditorModel.prototype.setView = function(view) {
+    this.view = view;
+};
 
 EditorModel.prototype.modeMessageHandler = function(e) {
     if (e.data.command == 'metadata') {

@@ -13,7 +13,8 @@ function loadFile(filename, callback) {
 
 function onFileLoaded(contents) {
     var model = new EditorModel(contents);
-    editors.push(new EditorController(model));
+    var view = new EditorView(contents);
+    editors.push(new EditorController(model, view));
 }
 
 function windowOnLoad() {

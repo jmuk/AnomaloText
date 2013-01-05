@@ -8,6 +8,7 @@ EditorView.prototype.Init = function(contents) {
     for (var i = 0; i < lines.length; i++) {
         this.lines.push(new EditorLineView(lines[i]));
     }
+    this.selection = null;
 };
 
 EditorView.prototype.applyHighlight = function(ranges) {
@@ -36,6 +37,12 @@ EditorView.prototype.addElementsToContents = function(container) {
     for (var i = 0; i < this.lines.length; i++) {
         this.lines[i].addElementsToContents(container);
     }
+    this.contentArea = container;
+    this.updateHeight();
+};
+
+EditorView.prototype.updateHeight = function() {
+    this.lineHeight = this.contentArea.offsetHeight / this.lines.length;
 };
 
 EditorView.prototype.getPosition = function(loc) {
@@ -91,5 +98,53 @@ EditorView.prototype.insertText = function(text, loc) {
 	    this.lines.slice(loc.line + 1));
     } else {
         this.lines[loc.line].insertTextAt(text, loc.position);
+    }
+};
+
+EditorView.prototype.createSelectionDiv = function(left, top, width) {
+    var div = document.createElement('div');
+    div.style.left = left + 'px';
+    div.style.top = top + 'px';
+    div.style.width = width + 'px';
+    div.style.height = this.lineHeight + 'px';
+    div.style.zIndex = EditorZIndice.SELECTION;
+    div.style.position = 'absolute';
+    div.className = 'selection';
+    this.contentArea.appendChild(div);
+    this.selection.push(div);
+};
+
+EditorView.prototype.updateSelection = function(selection) {
+    if (this.selection) {
+        for (var i = 0; i < this.selection.length; ++i) {
+            var s = this.selection[i];
+            s.parentNode.removeChild(s);
+        }
+        this.selection = null;
+    }
+
+    if (!selection)
+        return;
+
+    this.selection = [];
+    if (selection.start.line == selection.end.line) {
+        this.createSelectionDiv(
+            selection.start.offset,
+            selection.start.line * this.lineHeight,
+            selection.end.offset - selection.start.offset);
+    } else {
+        this.createSelectionDiv(
+            selection.start.offset,
+            selection.start.line * this.lineHeight,
+            this.contentArea.offsetWidth - selection.start.offset);
+        for (var i = selection.start.line + 1;
+             i < selection.end.line; i++) {
+            this.createSelectionDiv(
+                0, i * this.lineHeight,
+                this.contentArea.offsetWidth);
+        }
+        this.createSelectionDiv(
+            0, selection.end.line * this.lineHeight,
+            selection.end.offset);
     }
 };

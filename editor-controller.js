@@ -1,14 +1,6 @@
-var EditorZIndice = {
-    COMPOSITION: '2',
-    HIGHLIGHT: '1',
-    TEXT: '0',  // default.  It has to be 0.
-    SELECTION: '-1',
-    BACKGROUND: '-2',
-    HIDDEN: '-3'
-};
-
-function EditorController(model) {
+function EditorController(model, view) {
     this.model = model;
+    this.model.setView(view);
     this.contentArea = document.getElementById('content-area');
     while (this.contentArea.firstChild)
         this.contentArea.removeChild(this.contentArea.firstChild);
@@ -20,12 +12,12 @@ function EditorController(model) {
     this.parens = [];
     this.openParen = null;
     this.closeParen = null;
-    this.selection = null;
 }
 
 EditorController.prototype.updateHeight = function() {
     this.lineHeight = this.contentArea.offsetHeight / this.model.getLineCount();
     this.caretIndicator.style.height = this.lineHeight;
+    this.view.updateHeight();
 };
 
 EditorController.prototype.updateCaretIndicator = function() {
@@ -45,7 +37,7 @@ EditorController.prototype.updateCaretIndicator = function() {
     this.receiverContainer.style.top = this.caretIndicator.style.top;
     this.receiverSpacer.style.width = this.caretIndicator.style.left;
     this.maybeHighlightParens();
-    this.showSelection();
+    this.view.updateSelection(this.model.getSelection());
 };
 
 function borderedToken(element, className, container) {
@@ -103,55 +95,6 @@ EditorController.prototype.maybeHighlightParens = function() {
     } else {
         this.parens.push(
             borderedToken(origin, 'highlighted-warning', this.editor));
-    }
-};
-
-EditorController.prototype.createSelectionDiv = function(left, top, width) {
-    var div = document.createElement('div');
-    div.style.left = left + 'px';
-    div.style.top = top + 'px';
-    div.style.width = width + 'px';
-    div.style.height = this.lineHeight + 'px';
-    div.style.zIndex = EditorZIndice.SELECTION;
-    div.style.position = 'absolute';
-    div.className = 'selection';
-    this.contentArea.appendChild(div);
-    this.selection.push(div);
-};
-
-EditorController.prototype.showSelection = function() {
-    if (this.selection) {
-        for (var i = 0; i < this.selection.length; ++i) {
-            var s = this.selection[i];
-            s.parentNode.removeChild(s);
-        }
-        this.selection = null;
-    }
-
-    var selection = this.model.getSelection();
-    if (!selection)
-        return;
-
-    this.selection = [];
-    if (selection.start.line == selection.end.line) {
-        this.createSelectionDiv(
-            selection.start.offset,
-            selection.start.line * this.lineHeight,
-            selection.end.offset - selection.start.offset);
-    } else {
-        this.createSelectionDiv(
-            selection.start.offset,
-            selection.start.line * this.lineHeight,
-            this.contentArea.offsetWidth - selection.start.offset);
-        for (var i = selection.start.line + 1;
-             i < selection.end.line; i++) {
-            this.createSelectionDiv(
-                0, i * this.lineHeight,
-                this.contentArea.offsetWidth);
-        }
-        this.createSelectionDiv(
-            0, selection.end.line * this.lineHeight,
-            selection.end.offset);
     }
 };
 
