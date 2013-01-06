@@ -1,5 +1,6 @@
 function EditorController(model, view) {
     this.model = model;
+    this.view = view;
     this.model.setView(view);
     this.contentArea = document.getElementById('content-area');
     while (this.contentArea.firstChild)
@@ -16,26 +17,14 @@ function EditorController(model, view) {
 
 EditorController.prototype.updateHeight = function() {
     this.lineHeight = this.contentArea.offsetHeight / this.model.getLineCount();
-    this.caretIndicator.style.height = this.lineHeight;
     this.view.updateHeight();
 };
 
 EditorController.prototype.updateCaretIndicator = function() {
-    var caretPosition = this.model.getCaretPosition();
-    var top = caretPosition.lines * this.lineHeight;
-    var bottom = top + this.lineHeight;
-    var offsetTop = this.editor.offsetTop;
-    if (top + offsetTop < window.scrollY) {
-        window.scrollBy(0, top + offsetTop - window.scrollY);
-    }
-    if (bottom + offsetTop > window.scrollY + window.innerHeight) {
-        window.scrollBy(0, bottom + offsetTop -
-                        window.scrollY - window.innerHeight);
-    }
-    this.caretIndicator.style.left = caretPosition.leftOffset + 'px';
-    this.caretIndicator.style.top = top + 'px';
-    this.receiverContainer.style.top = this.caretIndicator.style.top;
-    this.receiverSpacer.style.width = this.caretIndicator.style.left;
+    this.view.updateCaretIndicator(this.model.getCaretLocation());
+    var caretPosition = this.view.getCaretPosition();
+    this.receiverContainer.style.top = caretPosition.top + 'px';
+    this.receiverSpacer.style.width = caretPosition.left + 'px';
     this.maybeHighlightParens();
     this.view.updateSelection(this.model.getSelection());
 };
@@ -142,7 +131,6 @@ EditorController.prototype.executeCommand = function(commandText) {
         if (method_name.indexOf(' ') > 0) {
             var names = method_name.split(' ');
             method_name = names[0];
-            console.log(names);
             args = names.slice(1);
         }
         var method = this.model[method_name];
@@ -264,13 +252,12 @@ EditorController.prototype.createEventReceiver = function() {
         this.receiver.incomposition = true;
         this.receiverContainer.style.zIndex = 
             EditorZIndice.COMPOSITION;
-        this.caretIndicator.style.visibility = 'hidden';
+        this.view.hideCaretIndicator();
     }).bind(this));
     receiver.addEventListener('compositionend', (function(ev) {
         this.receiverContainer.style.zIndex =
             EditorZIndice.HIDDEN;
         this.receiver.incomposition = false;
-        this.caretIndicator.style.visibility = 'visible';
         this.updateCaretIndicator();
     }).bind(this));
     window.onmousedown = (function(ev) {
@@ -305,20 +292,9 @@ EditorController.prototype.createEventReceiver = function() {
     this.editor = document.getElementById('editor');
     this.editor.appendChild(receiverContainer);
     receiver.focus();
-
-    var indicator = document.createElement('div');
-    indicator.style.border = 'solid 1px';
-    indicator.style.width = '0';
-    indicator.style.top = 0;
-    indicator.style.left = 0;
-    indicator.style.position = 'absolute';
-    indicator.style.zIndex = EditorZIndice.HIGHLIGHT;
-    this.editor.appendChild(indicator);
-
     this.receiverContainer = receiverContainer;
     this.receiverSpacer = receiverSpacer;
     this.receiver = receiver;
-    this.caretIndicator = indicator;
 };
 
 // TODO: parens should be defined in the mode.

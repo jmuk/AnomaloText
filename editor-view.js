@@ -9,6 +9,19 @@ EditorView.prototype.Init = function(contents) {
         this.lines.push(new EditorLineView(lines[i]));
     }
     this.selection = null;
+
+    // Creating caret indicator.
+    this.editor = document.getElementById('editor');
+    var indicator = document.createElement('div');
+    indicator.style.border = 'solid 1px';
+    indicator.style.width = '0';
+    indicator.style.top = 0;
+    indicator.style.left = 0;
+    indicator.style.position = 'absolute';
+    indicator.style.zIndex = EditorZIndice.HIGHLIGHT;
+    this.editor.appendChild(indicator);
+    this.caretIndicator = indicator;
+    this.caretPosition = null;
 };
 
 EditorView.prototype.applyHighlight = function(ranges) {
@@ -43,6 +56,7 @@ EditorView.prototype.addElementsToContents = function(container) {
 
 EditorView.prototype.updateHeight = function() {
     this.lineHeight = this.contentArea.offsetHeight / this.lines.length;
+    this.caretIndicator.style.height = this.lineHeight;
 };
 
 EditorView.prototype.getPosition = function(loc) {
@@ -61,6 +75,35 @@ EditorView.prototype.getCaretPosition = function(loc) {
 
 EditorView.prototype.getElement = function(loc) {
     return this.lines[loc.line].getElementAt(loc.position);
+};
+
+EditorView.prototype.getCaretPosition = function() {
+    return this.caretPosition;
+};
+
+EditorView.prototype.hideCaretIndicator = function() {
+    this.caretIndicator.style.visibility = 'hidden';
+};
+
+EditorView.prototype.showCaretIndicator = function() {
+    this.caretIndicator.style.visibility = 'visible';
+};
+
+EditorView.prototype.updateCaretIndicator = function(loc) {
+    var top = loc.line * this.lineHeight;
+    var left = this.getOffset(loc);
+    var bottom = top + this.lineHeight;
+    var offsetTop = this.editor.offsetTop;
+    if (top + offsetTop < window.scrollY) {
+        window.scrollBy(0, top + offsetTop - window.scrollY);
+    }
+    if (bottom + offsetTop > window.scrollY + window.innerHeight) {
+        window.scrollBy(0, bottom + offsetTop -
+                        window.scrollY - window.innerHeight);
+    }
+    this.caretPosition = {left: top, left: left};
+    this.caretIndicator.style.left = left + 'px';
+    this.caretIndicator.style.top = top + 'px';
 };
 
 EditorView.prototype.deleteRange = function(start, end) {

@@ -46,9 +46,8 @@ EditorModel.prototype.addElementsToContents = function(content) {
     this.view.addElementsToContents(content);
 };
 
-EditorModel.prototype.getCaretPosition = function() {
-    return this.view.getCaretPosition({line: this.lines.currentIndex(),
-                                       position: this.caretPosition});
+EditorModel.prototype.getCaretLocation = function() {
+    return {line: this.lines.currentIndex(), position: this.caretPosition};
 };
 
 EditorModel.prototype.getCurrentElement = function() {
