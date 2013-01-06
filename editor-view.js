@@ -22,6 +22,8 @@ EditorView.prototype.Init = function(contents) {
     this.editor.appendChild(indicator);
     this.caretIndicator = indicator;
     this.caretPosition = null;
+
+    this.parens = [];
 };
 
 EditorView.prototype.applyHighlight = function(ranges) {
@@ -190,4 +192,21 @@ EditorView.prototype.updateSelection = function(selection) {
             0, selection.end.line * this.lineHeight,
             selection.end.offset);
     }
+};
+
+EditorView.prototype.clearParenHighlight = function(loc, additionalName) {
+    for (var i = 0; i < this.parens.length; i++) {
+	var p = this.parens[i];
+	p.parentNode.removeChild(p);
+    }
+    this.parens = [];
+};
+
+EditorView.prototype.highlightParen = function(loc, additionalName) {
+    var element = this.lines[loc.line].highlightParen(loc.position, additionalName);
+    if (!element)
+	return;
+
+    this.editor.appendChild(element);
+    this.parens.push(element);
 };

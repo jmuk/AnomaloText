@@ -10,7 +10,6 @@ function EditorController(model, view) {
     this.lineHeight = 0;
     this.lineMargin = 0;
     this.updateHeight();
-    this.parens = [];
     this.openParen = null;
     this.closeParen = null;
 }
@@ -25,66 +24,8 @@ EditorController.prototype.updateCaretIndicator = function() {
     var caretPosition = this.view.getCaretPosition();
     this.receiverContainer.style.top = caretPosition.top + 'px';
     this.receiverSpacer.style.width = caretPosition.left + 'px';
-    this.maybeHighlightParens();
+    this.model.maybeHighlightParens();
     this.view.updateSelection(this.model.getSelection());
-};
-
-function borderedToken(element, className, container) {
-    var div = document.createElement('div');
-    div.className = className;
-    // Assumes the border width is 1px, so reduce width/height by 2.
-    div.style.width = element.offsetWidth - 2 + 'px';
-    div.style.height = element.offsetHeight - 2 + 'px';
-    div.style.top = element.offsetTop + 'px';
-    div.style.left = element.offsetLeft + 'px';
-    div.style.position = 'absolute';
-    div.style.zIndex = EditorZIndice.HIGHLIGHT;
-    container.appendChild(div);
-    return div;
-}
-
-// TODO: move this to View, and use overlay div rather than edit class.
-EditorController.prototype.maybeHighlightParens = function() {
-    for (var i = 0; i < this.parens.length; i++) {
-        var p = this.parens[i];
-        p.parentNode.removeChild(p);
-    }
-    this.parens = [];
-
-    var origin = this.model.getCurrentElement();
-    if (!origin)
-        return;
-
-    var paren = isParen(origin.textContent);
-    if (paren == null)
-        return;
-    
-    var target = (paren == ParenType.PAREN_OPEN) ?
-        origin.nextSibling : origin.previousSibling;
-    var counter = 1;
-    while (target) {
-        var data = isParen(target.textContent);
-        if (data != null) {
-            if (data == paren)
-                counter++;
-            else
-                counter--;
-        }
-        if (counter == 0) {
-            break;
-        }
-        target = (paren == ParenType.PAREN_OPEN) ?
-            target.nextSibling : target.previousSibling;
-    }
-
-    if (target) {
-        this.parens.push(
-            borderedToken(origin, 'highlighted', this.editor),
-            borderedToken(target, 'highlighted', this.editor));
-    } else {
-        this.parens.push(
-            borderedToken(origin, 'highlighted-warning', this.editor));
-    }
 };
 
 // TODO: the command list has to be customizable.
@@ -296,24 +237,3 @@ EditorController.prototype.createEventReceiver = function() {
     this.receiverSpacer = receiverSpacer;
     this.receiver = receiver;
 };
-
-// TODO: parens should be defined in the mode.
-var ParenType = {
-    PAREN_OPEN: 1,
-    PAREN_CLOSE: -1
-};
-
-function isParen(text) {
-    var parens = "({[]})";
-    if (text.length != 1)
-        return null;
-
-    var i = parens.indexOf(text);
-
-    if (i < 0)
-        return null;
-    if (i < parens.length / 2)
-        return ParenType.PAREN_OPEN;
-    else
-        return ParenType.PAREN_CLOSE;
-}

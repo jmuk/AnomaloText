@@ -1,3 +1,24 @@
+// TODO: parens should be defined in the mode.
+var ParenType = {
+    PAREN_OPEN: 1,
+    PAREN_CLOSE: -1
+};
+
+function isParen(text) {
+    var parens = "({[]})";
+    if (text.length != 1)
+        return null;
+
+    var i = parens.indexOf(text);
+
+    if (i < 0)
+        return null;
+    if (i < parens.length / 2)
+        return ParenType.PAREN_OPEN;
+    else
+        return ParenType.PAREN_CLOSE;
+}
+
 function EditorModel(contents) {
     this.caretPosition = 0;
     this.idealCaretOffset = null;
@@ -83,6 +104,53 @@ EditorModel.prototype.getSelection = function() {
 
 EditorModel.prototype.getLineCount = function() {
     return this.lines.length;  
+};
+
+EditorModel.prototype.maybeHighlightParens = function() {
+    this.view.clearParenHighlight();
+    var line = this.lines.current();
+    var origin = {line: this.lines.currentIndex(),
+                  position: this.caretPosition - 1};
+    var paren = isParen(line.charAt(this.caretPosition - 1));
+    if (paren == null) {
+        paren = isParen(line.charAt(this.caretPosition));
+        if (paren == null)
+            return;
+        origin.position = this.caretPosition;
+    }
+
+    var orientation = (paren == ParenType.PAREN_OPEN) ? +1 : -1;
+    var target = {line: origin.line, position: origin.position};
+    var counter = 1;
+    while (true) {
+        target.position += orientation;
+        if (target.position < 0) {
+            target.line--;
+            line = this.lines.at(target.line);
+            if (line == null)
+                break;
+            target.position = line.length - 1;
+        } else if (target.position >= line.length) {
+            target.line++;
+            line = this.lines.at(target.line);
+            if (line == null)
+                break;
+            target.position = 0;
+        }
+        var targetParen = isParen(line.charAt(target.position));
+        if (targetParen != null) {
+            if (paren == targetParen)
+                counter++;
+            else
+                counter--;
+        }
+        if (counter == 0) {
+            this.view.highlightParen(origin);
+            this.view.highlightParen(target);
+            return;
+        }
+    }
+    this.view.highlightParen(origin, 'warning');
 };
 
 EditorModel.prototype.moveCaret = function(newPosition) {

@@ -121,6 +121,35 @@ EditorLineView.prototype.getElementAt = function(position) {
     return null;
 };
 
+EditorLineView.prototype.highlightParen = function(position, additionalName) {
+    var remaining = position;
+    var token = null;
+    for (var i = 0; i < this.tokens.length; i++) {
+        if (remaining < this.tokens[i].length) {
+            token = this.tokens[i];
+            break;
+        }
+        remaining -= this.tokens[i].length;
+    }
+    if (!token)
+        return null;
+
+    var className = 'highlighted';
+    if (additionalName)
+        className += '-' + additionalName;
+    var element = token.element;
+    var width = element.offsetWidth / token.length;
+    var div = document.createElement('div');
+    div.className = className;
+    div.style.width = width - 2 + 'px';
+    div.style.height = element.offsetHeight - 2 + 'px';
+    div.style.left = element.offsetLeft + remaining * width + 'px';
+    div.style.top = element.offsetTop + 'px';
+    div.style.position = 'absolute';
+    div.style.zIndex = EditorZIndice.HIGHLIGHT;
+    return div;
+};
+
 EditorLineView.prototype.deleteAllChars = function() {
     for (var i = 0; i < this.tokens.length; i++) {
         var token = this.tokens[i];
