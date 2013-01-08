@@ -1,0 +1,66 @@
+<html>
+  <head>
+    <title>editor</title>
+    <script type="text/javascript" src="../js/zipper.js"></script>
+    <script type="text/javascript" src="../js/token.js"></script>
+    <script type="text/javascript" src="../js/constants.js"></script>
+    <script type="text/javascript" src="../js/editor-line-view.js"></script>
+    <script type="text/javascript" src="../js/editor-view.js"></script>
+    <script type="text/javascript" src="../js/editor-model.js"></script>
+    <script type="text/javascript" src="../js/editor-controller.js"></script>
+    <script type="text/javascript" src="editor.js"></script>
+    <!--
+	content_security_policy isn't customizable from packaged app?? hmm.
+	<script type="text/javascript" src="webfont.js"></script>
+    -->
+    <style type="text/css">
+      #editor {
+        position: relative;
+      }
+      #content-area {
+        position: absolute;
+        z-index: 1;
+      }
+      .highlighted {
+        border: 1px solid blue;
+      }
+      .highlighted-warning {
+        border: 1px solid red;
+      }
+      .selection {
+        background-color: lightblue;
+      }
+      .reserved {
+        font-weight: bold;
+        color: blue;
+      }
+      .keyword {
+        color: green;
+      }
+      .string {
+        color: green;
+      }
+      .comment {
+        color: maroon;
+      }
+      .declaration {
+        color: #af7817;
+      }
+      .wf-loading #content-area {
+        font-family: monospace;
+      }
+      .wf-inactive #content-area {
+        font-family: monospace;
+      }
+      .wf-active #content-area {
+        font-family: 'Source+Code+Pro::latin', monospace;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="editor">
+      <div id="content-area" style="background-color: white;">
+      </div>
+    </div>
+  </body>
+</html>
