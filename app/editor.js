@@ -1,7 +1,9 @@
 var editors = [];
 (function() {
-function onFileLoaded(contents) {
-    var model = new EditorModel(contents);
+var modeHandler = new ModeHandler('../modes/');
+
+function onFileLoaded(filename, contents) {
+    var model = new EditorModel(contents, modeHandler.getMode(filename));
     var view = new EditorView(contents);
     editors.push(new EditorController(model, view));
 }
@@ -19,7 +21,7 @@ function windowOnLoad() {
                     console.log(reader.readyState);
                     if (reader.readyState != FileReader.DONE)
                         return;
-                    onFileLoaded(reader.result);
+                    onFileLoaded(entry.name, reader.result);
                 };
                 reader.readAsText(file, 'utf-8');
             });

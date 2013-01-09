@@ -1,18 +1,20 @@
 var editors = [];
 (function() {
+var modeHandler = new ModeHandler('./modes/');
+
 function loadFile(filename, callback) {
     var xhr = new XMLHttpRequest();
     xhr.open('GET', filename, true);
     xhr.onreadystatechange = function() {
         if (xhr.readyState != XMLHttpRequest.DONE)
             return;
-        callback(xhr.responseText);
+        callback(filename, xhr.responseText);
     };
     xhr.send();
 }
 
-function onFileLoaded(contents) {
-    var model = new EditorModel(contents);
+function onFileLoaded(filename, contents) {
+    var model = new EditorModel(contents, modeHandler.getMode(filename));
     var view = new EditorView(contents);
     editors.push(new EditorController(model, view));
 }

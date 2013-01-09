@@ -149,7 +149,8 @@ function messageHandler(data) {
     if (data.command == 'metadata') {
         result = {pattern: /[a-zA-Z_0-9]+/, parens: '[{()}]'};
     } else if (data.command == 'highlight') {
-        result = {id: data.id, range: parseContents(data.contents)};
+        result = {id: data.id, callback_id: data.callback_id,
+		  range: parseContents(data.contents)};
     }
     result.command = data.command;
     self.postMessage(result);

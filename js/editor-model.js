@@ -19,14 +19,11 @@ function isParen(text) {
         return ParenType.PAREN_CLOSE;
 }
 
-function EditorModel(contents) {
+function EditorModel(contents, mode) {
     this.caretPosition = 0;
     this.idealCaretOffset = null;
     this.selection = null;
-    this.mode = new Worker('python-mode.js');
-    this.mode.addEventListener('message', this.modeMessageHandler.bind(this));
-    this.mode.postMessage({command:'metadata'});
-    this.mode.pattern = /[a-zA-Z_0-9]+/;
+    this.mode = mode;
     this.editingCount = 0;
     this.lines = new Zipper(contents.split('\n'));
     this.askHighlight();
@@ -38,18 +35,12 @@ EditorModel.prototype.setView = function(view) {
     this.view = view;
 };
 
-EditorModel.prototype.modeMessageHandler = function(e) {
-    if (e.data.command == 'metadata') {
-        this.mode.pattern = e.data.pattern;
-        this.mode.parens = e.data.parens;
-        return;
-    }
+EditorModel.prototype.onHighlighted = function(editingCount, range) {
+    if (this.editingCount != editingCount)
+	return;
 
-    if (this.editingCount != e.data.id)
-        return;
-
-    this.view.applyHighlight(e.data.range);
-};
+    this.view.applyHighlight(range);
+}
 
 EditorModel.prototype.askHighlight = function() {
     this.editingCount++;
@@ -57,10 +48,8 @@ EditorModel.prototype.askHighlight = function() {
     for (var i = 0; i < this.lines.length; i++) {
         lines.push(this.lines.at(i));
     }
-    this.mode.postMessage({command:'highlight',
-                           id: this.editingCount,
-                           contents: lines.join('\n') + '\n'
-                          });
+    this.mode.askHighlight(lines.join('\n') + '\n', this.editingCount,
+			   this.onHighlighted.bind(this));
 };
 
 EditorModel.prototype.addElementsToContents = function(content) {
