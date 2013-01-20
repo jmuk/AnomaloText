@@ -1,0 +1,41 @@
+body {
+    margin: 0 0 0 8px;
+}
+#menu {
+    border-bottom: solid black 1px;
+}
+#editor {
+    position: relative;
+    overflow: auto;
+    font-size: 16px;
+}
+#content-area {
+    position: absolute;
+    z-index: 1;
+    font-family: monospace;
+}
+.highlighted {
+    border: 1px solid blue;
+}
+.highlighted-warning {
+    border: 1px solid red;
+}
+.selection {
+    background-color: lightblue;
+}
+.reserved {
+    font-weight: bold;
+    color: blue;
+}
+.keyword {
+    color: green;
+}
+.string {
+    color: green;
+}
+.comment {
+    color: maroon;
+}
+.declaration {
+    color: #af7817;
+}

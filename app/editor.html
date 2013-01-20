@@ -10,51 +10,12 @@
     <script type="text/javascript" src="../js/editor-model.js"></script>
     <script type="text/javascript" src="../js/editor-controller.js"></script>
     <script type="text/javascript" src="editor.js"></script>
-    <style type="text/css">
-      body {
-        margin: 0 0 0 8px;
-      }
-      #editor {
-        position: relative;
-        overflow: auto;
-      }
-      #content-area {
-        position: absolute;
-        z-index: 1;
-      }
-      .highlighted {
-        border: 1px solid blue;
-      }
-      .highlighted-warning {
-        border: 1px solid red;
-      }
-      .selection {
-        background-color: lightblue;
-      }
-      .reserved {
-        font-weight: bold;
-        color: blue;
-      }
-      .keyword {
-        color: green;
-      }
-      .string {
-        color: green;
-      }
-      .comment {
-        color: maroon;
-      }
-      .declaration {
-        color: #af7817;
-      }
-      #content-area {
-        font-family: monospace;
-      }
-    </style>
+    <link rel="stylesheet" type="text/css" href="../css/editor.css"/>
   </head>
   <body>
     <div id="menu">
     </div>
+    <hr style="border: 1px; width: 100%"/>
     <div id="editor">
       <div id="content-area" style="background-color: white;">
       </div>
