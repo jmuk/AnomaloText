@@ -160,8 +160,8 @@ EditorController.prototype.enforceFocus = function() {
 
 EditorController.prototype.getLocationInContentArea = function(ev) {
     var result = {
-        x: ev.pageX - this.editor.offsetLeft,
-        y: ev.pageY - this.editor.offsetTop
+        x: ev.pageX - this.editor.offsetLeft + this.editor.scrollLeft,
+        y: ev.pageY - this.editor.offsetTop + this.editor.scrollTop
     };
     result.lines = Math.floor(result.y / this.lineHeight);
     return result;

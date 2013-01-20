@@ -108,7 +108,6 @@ EditorView.prototype.updateCaretIndicator = function(loc) {
     var screenLeft =
 	this.editor.scrollLeft;
     var screenRight = screenLeft + this.editor.clientWidth;
-    console.log(left + ', ' + screenLeft + ', ' + screenRight);
     if (left < screenLeft)
 	this.editor.scrollLeft = left;
     if (left > screenRight)
