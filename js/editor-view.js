@@ -12,6 +12,9 @@ EditorView.prototype.Init = function(contents) {
 
     // Creating caret indicator.
     this.editor = document.getElementById('editor');
+    var menu = document.getElementById('menu');
+    var menuHeight = menu.offsetHeight + menu.offsetTop;
+    this.editor.style.height = window.innerHeight - menuHeight + 'px';
     var indicator = document.createElement('div');
     indicator.style.border = 'solid 1px';
     indicator.style.width = '0';
@@ -95,14 +98,21 @@ EditorView.prototype.updateCaretIndicator = function(loc) {
     var top = loc.line * this.lineHeight;
     var left = this.getOffset(loc);
     var bottom = top + this.lineHeight;
-    var offsetTop = this.editor.offsetTop;
-    if (top + offsetTop < window.scrollY) {
-        window.scrollBy(0, top + offsetTop - window.scrollY);
-    }
-    if (bottom + offsetTop > window.scrollY + window.innerHeight) {
-        window.scrollBy(0, bottom + offsetTop -
-                        window.scrollY - window.innerHeight);
-    }
+    var screenBottom =
+	this.editor.scrollTop + this.editor.clientHeight;
+    if (top < this.editor.scrollTop)
+	this.editor.scrollTop = top;
+    if (bottom > screenBottom)
+        this.editor.scrollTop += (bottom - screenBottom);
+
+    var screenLeft =
+	this.editor.scrollLeft;
+    var screenRight = screenLeft + this.editor.clientWidth;
+    console.log(left + ', ' + screenLeft + ', ' + screenRight);
+    if (left < screenLeft)
+	this.editor.scrollLeft = left;
+    if (left > screenRight)
+	this.editor.scrollLeft += (left - screenRight);
     this.caretPosition = {left: top, left: left};
     this.caretIndicator.style.left = left + 'px';
     this.caretIndicator.style.top = top + 'px';

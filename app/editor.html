@@ -11,8 +11,12 @@
     <script type="text/javascript" src="../js/editor-controller.js"></script>
     <script type="text/javascript" src="editor.js"></script>
     <style type="text/css">
+      body {
+        margin: 0 0 0 8px;
+      }
       #editor {
         position: relative;
+        overflow: auto;
       }
       #content-area {
         position: absolute;
@@ -49,6 +53,8 @@
     </style>
   </head>
   <body>
+    <div id="menu">
+    </div>
     <div id="editor">
       <div id="content-area" style="background-color: white;">
       </div>
