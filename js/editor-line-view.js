@@ -1,5 +1,4 @@
 function EditorLineView(line) {
-    this.contents = line;
     this.length = line.length;
     this.tokens = Token.getTokens(line, null);
     this.linebreak = document.createElement('br');
@@ -160,14 +159,11 @@ EditorLineView.prototype.deleteAllChars = function() {
         this.linebreak.parentNode.removeChild(this.linebreak);
     }
     this.tokens = [];
-    this.contents = '';
     this.length = 0;
 };
 
 EditorLineView.prototype.deleteCharsIn = function(start, end) {
-    this.contents = this.contents.slice(0, start) +
-        this.contents.slice(end);
-    this.length = this.contents.length;
+    this.length -= Math.max(0, end - start);
     var offset = 0;
     var startIndex;
     var endIndex;
@@ -231,7 +227,6 @@ EditorLineView.prototype.insertTextAt = function(chunk, position) {
     if (chunk.length == 0)
         return;
     if (this.tokens.length == 0) {
-        this.contents = chunk;
         this.length = chunk.length;
         this.tokens = Token.getTokens(chunk, null);
         var parent = this.linebreak.parentNode;
@@ -243,8 +238,7 @@ EditorLineView.prototype.insertTextAt = function(chunk, position) {
         return;
     }
 
-    this.contents = this.contents.slice(0, position) + chunk + this.contents.slice(position);
-    this.length = this.contents.length;
+    this.length += chunk.length;
     var p = 0;
     for (var i = 0; i < this.tokens.length; i++) {
         var token = this.tokens[i];
@@ -271,7 +265,7 @@ EditorLineView.prototype.insertTextAt = function(chunk, position) {
         } else if (p + token.length == position){
             var previousToken = token;
             var nextToken;
-            if (i < token.length - 1)
+            if (i < this.tokens.length - 1)
                 nextToken = this.tokens[i + 1];
             var newTokens = Token.getTokens(chunk, null);
             if (newTokens.length == 1) {
@@ -302,7 +296,6 @@ EditorLineView.prototype.concat = function(another) {
     this.linebreak = another.linebreak;
     this.tokens = this.tokens.concat(another.tokens);
     this.length += another.length;
-    this.contents += another.contents;
 };
 
 EditorLineView.prototype.splitAt = function(position) {
@@ -325,8 +318,6 @@ EditorLineView.prototype.splitAt = function(position) {
         return [this, newLine];
     }
 
-    var prevContents = this.contents.slice(0, position);
-    var nextContents = this.contents.slice(position);
     var i = 0;
     var remaining = position;
     for (; i < this.tokens.length; i++) {
@@ -359,11 +350,9 @@ EditorLineView.prototype.splitAt = function(position) {
         this.tokens = prev;
         newLine.tokens = next;
     }
-    this.contents = prevContents;
-    this.length = prevContents.length;
-    newLine.contents = nextContents;
-    newLine.length = nextContents.length;
+    newLine.length = this.length - position;
     newLine.linebreak = this.linebreak;
+    this.length = position;
     this.linebreak = document.createElement('br');
     var container = newLine.tokens[0].element.parentNode;
     container.insertBefore(this.linebreak, newLine.tokens[0].element);

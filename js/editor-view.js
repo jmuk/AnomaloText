@@ -1,5 +1,4 @@
-function EditorView(contents) {
-    this.Init(contents);
+function EditorView() {
 }
 
 EditorView.prototype.Init = function(contents) {
@@ -74,16 +73,12 @@ EditorView.prototype.getOffset = function(loc) {
 
 EditorView.prototype.getCaretPosition = function(loc) {
     var line = this.lines[loc.line];
-    return {leftOffset: line.getOffset(loc.position),
-            lines: loc.line};
+    return {top: loc.line * this.lineHeight,
+	    left: line.getOffset(loc.position)};
 };
 
 EditorView.prototype.getElement = function(loc) {
     return this.lines[loc.line].getElementAt(loc.position);
-};
-
-EditorView.prototype.getCaretPosition = function() {
-    return this.caretPosition;
 };
 
 EditorView.prototype.hideCaretIndicator = function() {

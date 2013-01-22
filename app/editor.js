@@ -1,14 +1,14 @@
-var editors = [];
+var editor = null;
 (function() {
 var modeHandler = new ModeHandler('../modes/');
 
 function onFileLoaded(filename, contents) {
     var model = new EditorModel(contents, modeHandler.getMode(filename));
-    var view = new EditorView(contents);
-    editors.push(new EditorController(model, view));
+    editor = new EditorController(model);
 }
 
 function windowOnLoad() {
+    onFileLoaded('', '');
     chrome.fileSystem.chooseEntry(
         {type: 'openWritableFile'},
         function(entry){
@@ -30,9 +30,3 @@ function windowOnLoad() {
 
 window.addEventListener('load', windowOnLoad);
 })();
-
-function onFontActive() {
-    for (var i = 0; i < editors.length; i++) {
-        editors[i].updateHeight();
-    }
-}

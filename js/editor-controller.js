@@ -1,11 +1,14 @@
-function EditorController(model, view) {
+function EditorController(model) {
+    this.editor = document.getElementById('editor');
+    this.editor.innerHTML = '';
+    this.contentArea = document.createElement('div');
+    this.contentArea.className = 'content-area';
+    this.editor.appendChild(this.contentArea);
+
     this.model = model;
-    this.view = view;
-    this.model.setView(view);
-    this.contentArea = document.getElementById('content-area');
-    while (this.contentArea.firstChild)
-        this.contentArea.removeChild(this.contentArea.firstChild);
-    this.model.addElementsToContents(this.contentArea);
+    this.view = new EditorView();
+    this.model.setView(this.view);
+    this.view.addElementsToContents(this.contentArea);
     this.createEventReceiver();
     this.lineHeight = 0;
     this.lineMargin = 0;
@@ -20,8 +23,9 @@ EditorController.prototype.updateHeight = function() {
 };
 
 EditorController.prototype.updateCaretIndicator = function() {
-    this.view.updateCaretIndicator(this.model.getCaretLocation());
-    var caretPosition = this.view.getCaretPosition();
+    var loc = this.model.getCaretLocation();
+    this.view.updateCaretIndicator(loc);
+    var caretPosition = this.view.getCaretPosition(loc);
     this.receiverContainer.style.top = caretPosition.top + 'px';
     this.receiverSpacer.style.width = caretPosition.left + 'px';
     this.model.maybeHighlightParens();
@@ -86,11 +90,11 @@ EditorController.prototype.executeCommand = function(commandText) {
     return consumed;
 };
 
-EditorController.prototype.input = function(ev) {
+EditorController.prototype.keypress = function(ev) {
     if (this.receiver.incomposition)
         return false;
 
-    this.model.insertText(this.receiver.textContent);
+    this.model.insertText(String.fromCharCode(ev.charCode));
     ev.preventDefault();
     this.receiver.textContent = '';
     this.updateCaretIndicator();
@@ -188,8 +192,9 @@ EditorController.prototype.createEventReceiver = function() {
     receiver.style.backgroundColor = 'white';
     receiver.contentEditable = true;
     receiver.addEventListener('keydown', this.keydown.bind(this));
-    receiver.addEventListener('input', this.input.bind(this));
+    receiver.addEventListener('keypress', this.keypress.bind(this));
     receiver.addEventListener('compositionstart', (function(ev) {
+        this.receiver.innerHTML = '';
         this.receiver.incomposition = true;
         this.receiverContainer.style.zIndex = 
             EditorZIndice.COMPOSITION;
@@ -199,6 +204,9 @@ EditorController.prototype.createEventReceiver = function() {
         this.receiverContainer.style.zIndex =
             EditorZIndice.HIDDEN;
         this.receiver.incomposition = false;
+        this.receiver.innerHTML = '';
+        this.view.showCaretIndicator();
+        this.model.insertText(ev.data);
         this.updateCaretIndicator();
     }).bind(this));
     window.onmousedown = (function(ev) {
@@ -230,7 +238,6 @@ EditorController.prototype.createEventReceiver = function() {
     }).bind(this);
     
     receiverContainer.appendChild(receiver);
-    this.editor = document.getElementById('editor');
     this.editor.appendChild(receiverContainer);
     receiver.focus();
     this.receiverContainer = receiverContainer;

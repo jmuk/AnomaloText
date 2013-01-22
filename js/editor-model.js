@@ -33,9 +33,16 @@ function EditorModel(contents, mode) {
 
 EditorModel.prototype.setView = function(view) {
     this.view = view;
+    var lines = [];
+    for (var i = 0; i < this.lines.length; i++){
+	lines.push(this.lines.at(i));
+    }
+    this.view.Init(lines.join('\n') + '\n');
 };
 
 EditorModel.prototype.onHighlighted = function(editingCount, range) {
+    if (!this.view)
+	return;
     if (this.editingCount != editingCount)
 	return;
 
@@ -50,10 +57,6 @@ EditorModel.prototype.askHighlight = function() {
     }
     this.mode.askHighlight(lines.join('\n') + '\n', this.editingCount,
 			   this.onHighlighted.bind(this));
-};
-
-EditorModel.prototype.addElementsToContents = function(content) {
-    this.view.addElementsToContents(content);
 };
 
 EditorModel.prototype.getCaretLocation = function() {
@@ -148,6 +151,9 @@ EditorModel.prototype.moveCaret = function(newPosition) {
 };
 
 EditorModel.prototype.startMouseSelection = function(leftOffset, lines) {
+    if (lines > this.lines.length)
+	return;
+
     this.selection = {};
     this.selection.origin = {
         line: lines,
@@ -160,10 +166,9 @@ EditorModel.prototype.startMouseSelection = function(leftOffset, lines) {
 };
 
 EditorModel.prototype.updateMouseSelection = function(leftOffset, lines) {
-    if (!this.selection) {
-        console.error('selection is missing during mouse selection?');
+    if (!this.selection)
         return;
-    }
+    lines = Math.min(Math.max(lines, 0), this.lines.length);
     this.selection.current = {
         line: lines,
         position: this.view.getPosition({line: lines, offset: leftOffset})
@@ -171,6 +176,8 @@ EditorModel.prototype.updateMouseSelection = function(leftOffset, lines) {
 };
 
 EditorModel.prototype.moveToPosition = function(leftOffset, lines) {
+    if (lines > this.lines.length)
+	return;
     this.lines.jumpTo(lines);
     this.moveCaret(this.view.getPosition({line: lines, offset: leftOffset}));
 };
