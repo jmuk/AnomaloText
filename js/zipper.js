@@ -33,8 +33,9 @@ Zipper.prototype.next = function() {
     return this.back[this.back.length - 2];
 };
 
-Zipper.prototype.forward = function() {
-    if (this.back.length <= 1)
+Zipper.prototype.forward = function(force) {
+    var minimum = force ? 0 : 1;
+    if (this.back.length <= minimum)
 	return false;
     this.front.push(this.back.pop());
     return true;

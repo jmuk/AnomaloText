@@ -43,6 +43,8 @@ EditorController.prototype.commands = {
     'C-x': ['copyToClipboard', 'deleteSelection'],
     'C-c': 'copyToClipboard',
     'C-v': 'pasteFromClipboard',
+    'C-z': 'undo',
+    'C-y': 'redo',
     'M-f': 'moveNextWord',
     'M-b': 'movePreviousWord',
     'Enter': 'newLine',
