@@ -250,6 +250,9 @@ EditorController.prototype.createEventReceiver = function() {
         this.model.moveToPosition(loc.x, loc.lines);
         this.updateCaretIndicator();
     }).bind(this);
+    window.onresize = (function(ev) {
+        this.view.refreshHeight();
+    }).bind(this);
     this.editor.onscroll = (function(ev) {
         this.model.ensureCaretVisible(
             this.view.getVisibleLines());

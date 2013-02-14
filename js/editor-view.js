@@ -11,9 +11,7 @@ EditorView.prototype.Init = function(contents) {
 
     // Creating caret indicator.
     this.editor = document.getElementById('editor');
-    var menu = document.getElementById('menu');
-    var menuHeight = menu.offsetHeight + menu.offsetTop;
-    this.editor.style.height = window.innerHeight - menuHeight + 'px';
+    this.refreshHeight();
     var indicator = document.createElement('div');
     indicator.style.border = 'solid 1px';
     indicator.style.width = '0';
@@ -26,6 +24,12 @@ EditorView.prototype.Init = function(contents) {
     this.caretPosition = null;
 
     this.parens = [];
+};
+
+EditorView.prototype.refreshHeight = function() {
+    var menu = document.getElementById('menu');
+    var menuHeight = menu.offsetHeight + menu.offsetTop;
+    this.editor.style.height = window.innerHeight - menuHeight + 'px';
 };
 
 EditorView.prototype.applyHighlight = function(ranges) {
