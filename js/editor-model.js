@@ -36,16 +36,16 @@ EditorModel.prototype.setView = function(view) {
     this.view = view;
     var lines = [];
     for (var i = 0; i < this.lines.length; i++){
-	lines.push(this.lines.at(i));
+        lines.push(this.lines.at(i));
     }
     this.view.Init(lines.join('\n') + '\n');
 };
 
 EditorModel.prototype.onHighlighted = function(editingCount, range) {
     if (!this.view)
-	return;
+        return;
     if (this.editingCount != editingCount)
-	return;
+        return;
 
     this.view.applyHighlight(range);
 }
@@ -57,7 +57,7 @@ EditorModel.prototype.askHighlight = function() {
         lines.push(this.lines.at(i));
     }
     this.mode.askHighlight(lines.join('\n') + '\n', this.editingCount,
-			   this.onHighlighted.bind(this));
+                           this.onHighlighted.bind(this));
 };
 
 EditorModel.prototype.getCaretLocation = function() {
@@ -153,7 +153,7 @@ EditorModel.prototype.moveCaret = function(newPosition) {
 
 EditorModel.prototype.startMouseSelection = function(leftOffset, lines) {
     if (lines > this.lines.length)
-	return;
+        return;
 
     this.selection = {};
     this.selection.origin = {
@@ -178,17 +178,17 @@ EditorModel.prototype.updateMouseSelection = function(leftOffset, lines) {
 
 EditorModel.prototype.endMouseSelection = function() {
     if (!this.selection)
-	return;
+        return;
 
     if (this.selection.origin.line == this.selection.current.line &&
-	this.selection.origin.position == this.selection.current.position) {
-	this.selection = null;
+        this.selection.origin.position == this.selection.current.position) {
+        this.selection = null;
     }
 };
 
 EditorModel.prototype.moveToPosition = function(leftOffset, lines) {
     if (lines > this.lines.length)
-	return;
+        return;
     this.lines.jumpTo(lines);
     this.moveCaret(this.view.getPosition({line: lines, offset: leftOffset}));
 };
@@ -269,7 +269,7 @@ EditorModel.prototype.movePreviousWord = function(select) {
     var lastMatcher = RegExp(pattern_str.slice(1, pattern_str.length - 1) + "$");
     var m = lastMatcher.exec(content);
     if (m)
-	this.moveCaret(content.length - m[0].length);
+        this.moveCaret(content.length - m[0].length);
 
     if (select)
         this.postProcessSelection();
@@ -343,6 +343,59 @@ EditorModel.prototype.moveNextLine = function(select) {
         this.postProcessSelection();
 };
 
+EditorModel.prototype.movePreviousPage = function(select) {
+    if (select)
+        this.prepareSelection();
+    else
+        this.selection = null;
+
+    var visibleLines = this.view.getVisibleLines();
+    var pageLines = visibleLines.end - visibleLines.start;
+    var currentIndex = this.lines.currentIndex();
+    var newIndex = Math.max(currentIndex - pageLines + 1, 0);
+    if (newIndex < currentIndex) {
+        if (this.idealCaretOffset == null)
+            this.idealCaretOffset =
+                this.view.getOffset({line: this.lines.currentIndex(),
+                                     position: this.caretPosition});
+        this.lines.jumpTo(newIndex);
+        this.caretPosition =
+            this.view.getPosition({line: this.lines.currentIndex(),
+                                   offset: this.idealCaretOffset});
+    }
+    this.view.pageUp(pageLines - 1);
+
+    if (select)
+        this.postProcessSelection();
+};
+
+EditorModel.prototype.moveNextPage = function(select) {
+    if (select)
+        this.prepareSelection();
+    else
+        this.selection = null;
+
+    var visibleLines = this.view.getVisibleLines();
+    var pageLines = visibleLines.end - visibleLines.start;
+    var currentIndex = this.lines.currentIndex();
+    var newIndex =
+        Math.min(currentIndex + pageLines - 1, this.lines.length - pageLines);
+    if (newIndex > currentIndex) {
+        if (this.idealCaretOffset == null)
+            this.idealCaretOffset =
+                this.view.getOffset({line: this.lines.currentIndex(),
+                                     position: this.caretPosition});
+        this.lines.jumpTo(newIndex);
+        this.caretPosition =
+            this.view.getPosition({line: this.lines.currentIndex(),
+                                   offset: this.idealCaretOffset});
+    }
+    this.view.pageDown(pageLines - 1);
+
+    if (select)
+        this.postProcessSelection();
+};
+
 EditorModel.prototype.moveToStartOfLine = function() {
     this.moveCaret(0);
 };
@@ -357,8 +410,8 @@ EditorModel.prototype.ensureCaretVisible = function(lines) {
       return;
 
   var currentOffset =
-	this.view.getOffset({line: this.lines.currentIndex(),
-			     position: this.caretPosition});
+        this.view.getOffset({line: this.lines.currentIndex(),
+                             position: this.caretPosition});
   var changed = false;
   if (this.lines.currentIndex() < lines.start) {
       this.lines.jumpTo(lines.start);
@@ -369,7 +422,7 @@ EditorModel.prototype.ensureCaretVisible = function(lines) {
   }
   if (changed) {
       if (this.idealCaretOffset == null)
-	  this.idealCaretOffset = currentOffset;
+          this.idealCaretOffset = currentOffset;
       this.caretPosition =
           this.view.getPosition({line: this.lines.currentIndex(),
                                  offset: this.idealCaretOffset});
@@ -433,8 +486,8 @@ EditorModel.prototype.deleteSelection = function() {
 
     var deletedText = this.deleteRange(selection.start, selection.end);
     this.editHistory.push(
-	new EditingHistoryEntry(
-	    'delete', deletedText, selection.start, selection.end));
+        new EditingHistoryEntry(
+            'delete', deletedText, selection.start, selection.end));
     this.selection = null;
 };
 
@@ -445,27 +498,27 @@ EditorModel.prototype.deleteRange = function(start, end) {
     this.lines.jumpTo(start.line);
     if (start.line == end.line) {
         var line = this.lines.current();
-	deletedText = line.slice(start.position, end.position);
+        deletedText = line.slice(start.position, end.position);
         this.lines.replace(line.slice(0, start.position) +
-			   line.slice(end.position));
+                           line.slice(end.position));
         this.caretPosition = start.position;
     } else {
-	var deletedLines = [];
-	deletedLines.push(this.lines.current().slice(start.position));
+        var deletedLines = [];
+        deletedLines.push(this.lines.current().slice(start.position));
         if (start.position == 0) {
             this.lines.remove();
         } else {
             this.lines.replace(
-		this.lines.current().slice(0, start.position));
+                this.lines.current().slice(0, start.position));
             this.lines.forward();
         }
         for (var i = start.line + 1; i < end.line; i++) {
-	    deletedLines.push(this.lines.current());
+            deletedLines.push(this.lines.current());
             this.lines.remove();
         }
-	deletedLines.push(
-	    this.lines.current().slice(0, end.position));
-	deletedText = deletedLines.join("\n");
+        deletedLines.push(
+            this.lines.current().slice(0, end.position));
+        deletedText = deletedLines.join("\n");
         if (end.position > 0) {
             if (end.position == this.lines.current().length) {
                 this.lines.remove();
@@ -514,20 +567,20 @@ EditorModel.prototype.deletePreviousChar = function() {
             var curLine = this.lines.current();
             this.moveCaret(curLine.length);
             this.lines.replace(curLine + line);
-	    deletedChar = "\n";
+            deletedChar = "\n";
         } else {
             return;
         }
     } else {
-	deletedChar = this.lines.current().charAt(
-	    this.caretPosition - 1);
+        deletedChar = this.lines.current().charAt(
+            this.caretPosition - 1);
         this.lines.replace(line.slice(0, this.caretPosition - 1) +
                            line.slice(this.caretPosition));
         this.moveCaret(this.caretPosition - 1);
     }
     this.editHistory.push(
-	new EditingHistoryEntry(
-	    'delete', deletedChar, previousLoc, currentLoc));
+        new EditingHistoryEntry(
+            'delete', deletedChar, previousLoc, currentLoc));
     this.view.deleteRange(previousLoc, currentLoc);
     this.askHighlight();
 };
@@ -557,18 +610,18 @@ EditorModel.prototype.deleteNextChar = function() {
             this.lines.remove();
             this.lines.backward();
             this.lines.replace(line + nextLine);
-	    deletedChar = "\n";
+            deletedChar = "\n";
         } else {
             return;
         }
     } else {
-	deletedChar = this.lines.current().charAt(this.caretPosition);
+        deletedChar = this.lines.current().charAt(this.caretPosition);
         this.lines.replace(line.slice(0, this.caretPosition) +
                            line.slice(this.caretPosition + 1));
     }
     this.editHistory.push(
-	new EditingHistoryEntry(
-	    'delete', deletedChar, currentLoc, nextLoc));
+        new EditingHistoryEntry(
+            'delete', deletedChar, currentLoc, nextLoc));
     this.view.deleteRange(currentLoc, nextLoc);
     this.askHighlight();
 };
@@ -589,27 +642,27 @@ EditorModel.prototype.decrementIndent = function() {
     var currentLine = this.lines.current();
     var tabWidth = /^\s*/.exec(currentLine)[0].length;
     if (tabWidth == 0) {
-	return;
+        return;
     } else {
-	var pos1, pos2;
-	var slicePoint;
-	if (tabWidth < this.tabWidth) {
-	    pos1 = {line: this.lines.currentIndex(), position: 0};
-	    pos2 = {line: this.lines.currentIndex(), position: tabWidth};
-	    slicePoint = tabWidth;
-	    tabWidth = 0;
-	} else {
-	    pos1 = {line: this.lines.currentIndex(), position: 0};
-	    pos2 = {line: this.lines.currentIndex(), position: this.tabWidth};
-	    slicePoint = this.tabWidth;
-	    tabWidth -= this.tabWidth;
-	}
-	this.lines.replace(
+        var pos1, pos2;
+        var slicePoint;
+        if (tabWidth < this.tabWidth) {
+            pos1 = {line: this.lines.currentIndex(), position: 0};
+            pos2 = {line: this.lines.currentIndex(), position: tabWidth};
+            slicePoint = tabWidth;
+            tabWidth = 0;
+        } else {
+            pos1 = {line: this.lines.currentIndex(), position: 0};
+            pos2 = {line: this.lines.currentIndex(), position: this.tabWidth};
+            slicePoint = this.tabWidth;
+            tabWidth -= this.tabWidth;
+        }
+        this.lines.replace(
             this.lines.current().slice(slicePoint));
         this.view.deleteRange(pos1, pos2);
-	var deleted = (new Array(pos2 - pos1 + 1).join(" "));
-	this.editHistory.push(
-	    new EditingHistoryEntry('delete', deleted, pos1, pos2));
+        var deleted = (new Array(pos2 - pos1 + 1).join(" "));
+        this.editHistory.push(
+            new EditingHistoryEntry('delete', deleted, pos1, pos2));
     }
     this.moveCaret(tabWidth);
 };
@@ -624,9 +677,9 @@ EditorModel.prototype.insertText = function(text) {
     this.insertTextInternal(text);
 
     var loc2 = {line: this.lines.currentIndex(),
-		position: this.caretPosition};
+                position: this.caretPosition};
     this.editHistory.push(
-	new EditingHistoryEntry('insert', text, loc, loc2));
+        new EditingHistoryEntry('insert', text, loc, loc2));
 };
 
 EditorModel.prototype.insertTextInternal = function(text) {
@@ -679,30 +732,30 @@ EditorModel.prototype.insertTextInternal = function(text) {
 EditorModel.prototype.undo = function() {
     var historyEntry = this.editHistory.undo();
     if (!historyEntry)
-	return;
+        return;
 
     this.selection = null;
     this.lines.jumpTo(historyEntry.pos.line);
     this.moveCaret(historyEntry.pos.position);
     if (historyEntry.type == 'delete') {
-	this.insertText(historyEntry.content);
+        this.insertText(historyEntry.content);
     } else {
-	this.deleteRange(historyEntry.pos, historyEntry.pos2);
+        this.deleteRange(historyEntry.pos, historyEntry.pos2);
     }
 };
 
 EditorModel.prototype.redo = function() {
     var historyEntry = this.editHistory.redo();
     if (!historyEntry)
-	return;
+        return;
 
     this.selection = null;
     this.lines.jumpTo(historyEntry.pos.line);
     this.moveCaret(historyEntry.pos.position);
     if (historyEntry.type == 'insert') {
-	this.insertText(historyEntry.content);
+        this.insertText(historyEntry.content);
     } else {
-	this.deleteRange(historyEntry.pos, historyEntry.pos2);
+        this.deleteRange(historyEntry.pos, historyEntry.pos2);
     }
 };
 

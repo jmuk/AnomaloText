@@ -223,3 +223,15 @@ EditorView.prototype.highlightParen = function(loc, additionalName) {
     this.editor.appendChild(element);
     this.parens.push(element);
 };
+
+EditorView.prototype.pageUp = function(lines) {
+    var height = lines * this.lineHeight;
+    this.editor.scrollTop = Math.max(this.editor.scrollTop - height, 0);
+};
+
+EditorView.prototype.pageDown = function(lines) {
+    var height = lines * this.lineHeight;
+    this.editor.scrollTop =
+	Math.min(this.editor.scrollTop + height,
+		 this.editor.scrollHeight - this.editor.offsetHeight);
+};
