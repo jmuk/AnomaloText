@@ -18,18 +18,25 @@ function EditorController(model) {
 }
 
 EditorController.prototype.updateHeight = function() {
-    this.lineHeight = this.contentArea.offsetHeight / this.model.getLineCount();
+    this.lineHeight =
+        Math.floor(this.contentArea.offsetHeight / this.model.getLineCount());
     this.view.updateHeight();
 };
 
 EditorController.prototype.updateCaretIndicator = function() {
-    var loc = this.model.getCaretLocation();
-    this.view.updateCaretIndicator(loc);
-    var caretPosition = this.view.getCaretPosition(loc);
-    this.receiverContainer.style.top = caretPosition.top + 'px';
-    this.receiverSpacer.style.width = caretPosition.left + 'px';
+    var selection = this.model.getSelection();
+    if (selection) {
+        this.view.hideCaretIndicator();
+    } else {
+        var loc = this.model.getCaretLocation();
+        this.view.showCaretIndicator();
+        this.view.updateCaretIndicator(loc);
+        var caretPosition = this.view.getCaretPosition(loc);
+        this.receiverContainer.style.top = caretPosition.top + 'px';
+        this.receiverSpacer.style.width = caretPosition.left + 'px';
+    }
+    this.view.updateSelection(selection);
     this.model.maybeHighlightParens();
-    this.view.updateSelection(this.model.getSelection());
 };
 
 // TODO: the command list has to be customizable.
@@ -233,9 +240,15 @@ EditorController.prototype.createEventReceiver = function() {
     window.onmouseup = (function(ev) {
         this.enforceFocus();
         this.mouseSelection = false;
+        this.model.endMouseSelection();
 
         var loc = this.getLocationInContentArea(ev);
         this.model.moveToPosition(loc.x, loc.lines);
+        this.updateCaretIndicator();
+    }).bind(this);
+    this.editor.onscroll = (function(ev) {
+        this.model.ensureCaretVisible(
+            this.view.getVisibleLines());
         this.updateCaretIndicator();
     }).bind(this);
     

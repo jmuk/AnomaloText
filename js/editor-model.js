@@ -176,6 +176,16 @@ EditorModel.prototype.updateMouseSelection = function(leftOffset, lines) {
     };
 };
 
+EditorModel.prototype.endMouseSelection = function() {
+    if (!this.selection)
+	return;
+
+    if (this.selection.origin.line == this.selection.current.line &&
+	this.selection.origin.position == this.selection.current.position) {
+	this.selection = null;
+    }
+};
+
 EditorModel.prototype.moveToPosition = function(leftOffset, lines) {
     if (lines > this.lines.length)
 	return;
@@ -339,6 +349,31 @@ EditorModel.prototype.moveToStartOfLine = function() {
 
 EditorModel.prototype.moveToEndOfLine = function() {
     this.moveCaret(this.lines.current().length);
+};
+
+EditorModel.prototype.ensureCaretVisible = function(lines) {
+  // Do not modify the caret position when selecting.
+  if (this.selection)
+      return;
+
+  var currentOffset =
+	this.view.getOffset({line: this.lines.currentIndex(),
+			     position: this.caretPosition});
+  var changed = false;
+  if (this.lines.currentIndex() < lines.start) {
+      this.lines.jumpTo(lines.start);
+      changed = true;
+  } else if (this.lines.currentIndex() > lines.end) {
+      this.lines.jumpTo(lines.end);
+      changed = true;
+  }
+  if (changed) {
+      if (this.idealCaretOffset == null)
+	  this.idealCaretOffset = currentOffset;
+      this.caretPosition =
+          this.view.getPosition({line: this.lines.currentIndex(),
+                                 offset: this.idealCaretOffset});
+  }
 };
 
 EditorModel.prototype.prepareSelection = function() {

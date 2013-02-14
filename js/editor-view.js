@@ -59,7 +59,7 @@ EditorView.prototype.addElementsToContents = function(container) {
 };
 
 EditorView.prototype.updateHeight = function() {
-    this.lineHeight = this.contentArea.offsetHeight / this.lines.length;
+    this.lineHeight = Math.floor(this.contentArea.offsetHeight / this.lines.length);
     this.caretIndicator.style.height = this.lineHeight;
 };
 
@@ -74,11 +74,20 @@ EditorView.prototype.getOffset = function(loc) {
 EditorView.prototype.getCaretPosition = function(loc) {
     var line = this.lines[loc.line];
     return {top: loc.line * this.lineHeight,
-	    left: line.getOffset(loc.position)};
+            left: line.getOffset(loc.position)};
 };
 
 EditorView.prototype.getElement = function(loc) {
     return this.lines[loc.line].getElementAt(loc.position);
+};
+
+EditorView.prototype.getVisibleLines = function() {
+    var top = this.editor.scrollTop;
+    var bottom = top + this.editor.offsetHeight;
+    return {
+        start: Math.ceil(top / this.lineHeight),
+        end: Math.floor(bottom / this.lineHeight) - 1
+    };
 };
 
 EditorView.prototype.hideCaretIndicator = function() {
@@ -94,19 +103,19 @@ EditorView.prototype.updateCaretIndicator = function(loc) {
     var left = this.getOffset(loc);
     var bottom = top + this.lineHeight;
     var screenBottom =
-	this.editor.scrollTop + this.editor.clientHeight;
+        this.editor.scrollTop + this.editor.clientHeight;
     if (top < this.editor.scrollTop)
-	this.editor.scrollTop = top;
+        this.editor.scrollTop = top;
     if (bottom > screenBottom)
         this.editor.scrollTop += (bottom - screenBottom);
 
     var screenLeft =
-	this.editor.scrollLeft;
+        this.editor.scrollLeft;
     var screenRight = screenLeft + this.editor.clientWidth;
     if (left < screenLeft)
-	this.editor.scrollLeft = left;
+        this.editor.scrollLeft = left;
     if (left > screenRight)
-	this.editor.scrollLeft += (left - screenRight);
+        this.editor.scrollLeft += (left - screenRight);
     this.caretPosition = {left: top, left: left};
     this.caretIndicator.style.left = left + 'px';
     this.caretIndicator.style.top = top + 'px';
@@ -114,18 +123,18 @@ EditorView.prototype.updateCaretIndicator = function(loc) {
 
 EditorView.prototype.deleteRange = function(start, end) {
     if (start.line == end.line) {
-	this.lines[start.line].deleteCharsIn(
-	    start.position, end.position);
+        this.lines[start.line].deleteCharsIn(
+            start.position, end.position);
     } else {
-	this.lines[start.line].deleteCharsIn(
-	    start.position, this.lines[start.line].length);
-	for (var i = start.line + 1; i < end.line; i++) {
-	    this.lines[i].deleteAllChars();
-	}
-	this.lines[end.line].deleteCharsIn(0, end.position);
-	this.lines[start.line].concat(this.lines[end.line]);
-	this.lines = this.lines.slice(0, start.line + 1).concat(
-	    this.lines.slice(end.line + 1));
+        this.lines[start.line].deleteCharsIn(
+            start.position, this.lines[start.line].length);
+        for (var i = start.line + 1; i < end.line; i++) {
+            this.lines[i].deleteAllChars();
+        }
+        this.lines[end.line].deleteCharsIn(0, end.position);
+        this.lines[start.line].concat(this.lines[end.line]);
+        this.lines = this.lines.slice(0, start.line + 1).concat(
+            this.lines.slice(end.line + 1));
     }
 };
 
@@ -135,16 +144,16 @@ EditorView.prototype.insertText = function(text, loc) {
         var newLines = this.lines[loc.line].splitAt(
             loc.position);
         newLines[0].insertTextAt(lines[0], newLines[0].length);
-	var newLinesMiddle = [];
+        var newLinesMiddle = [];
         for (var i = 1; i < lines.length - 1; i++) {
             var newLine = new EditorLineView(lines[i]);
             newLine.addElementsBefore(this.lines[loc.line + 1]);
             newLinesMiddle.push(newLine);
         }
         newLines[1].insertTextAt(lines[lines.length - 1], 0);
-	this.lines = this.lines.slice(0, loc.line).concat(
-	    [newLines[0]], newLinesMiddle, [newLines[1]]).concat(
-	    this.lines.slice(loc.line + 1));
+        this.lines = this.lines.slice(0, loc.line).concat(
+            [newLines[0]], newLinesMiddle, [newLines[1]]).concat(
+            this.lines.slice(loc.line + 1));
     } else {
         this.lines[loc.line].insertTextAt(text, loc.position);
     }
@@ -200,8 +209,8 @@ EditorView.prototype.updateSelection = function(selection) {
 
 EditorView.prototype.clearParenHighlight = function(loc, additionalName) {
     for (var i = 0; i < this.parens.length; i++) {
-	var p = this.parens[i];
-	p.parentNode.removeChild(p);
+        var p = this.parens[i];
+        p.parentNode.removeChild(p);
     }
     this.parens = [];
 };
@@ -209,7 +218,7 @@ EditorView.prototype.clearParenHighlight = function(loc, additionalName) {
 EditorView.prototype.highlightParen = function(loc, additionalName) {
     var element = this.lines[loc.line].highlightParen(loc.position, additionalName);
     if (!element)
-	return;
+        return;
 
     this.editor.appendChild(element);
     this.parens.push(element);
