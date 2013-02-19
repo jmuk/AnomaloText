@@ -3,11 +3,16 @@ body {
 }
 #menu {
     border-bottom: solid black 1px;
+    display: -webkit-box;
+    -webkit-box-orient: horizontal;
 }
 #editor {
     position: relative;
     overflow: auto;
     font-size: 16px;
+}
+#spacer {
+    -webkit-box-flex: 1;
 }
 .content-area {
     position: absolute;

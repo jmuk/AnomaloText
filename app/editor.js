@@ -2,8 +2,10 @@ var editor = null;
 (function() {
 var modeHandler = new ModeHandler('../modes/');
 
-function onFileLoaded(filename, contents) {
-    var model = new EditorModel(contents, modeHandler.getMode(filename));
+function onFileLoaded(entry, contents) {
+    console.log(entry);
+    var backend = new AppModelBackend(entry, contents);
+    var model = new EditorModel(contents, backend, modeHandler.getMode(entry.name));
     editor = new EditorController(model);
 }
 
@@ -21,7 +23,7 @@ function windowOnLoad() {
                     console.log(reader.readyState);
                     if (reader.readyState != FileReader.DONE)
                         return;
-                    onFileLoaded(entry.name, reader.result);
+                    onFileLoaded(entry, reader.result);
                 };
                 reader.readAsText(file, 'utf-8');
             });

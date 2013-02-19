@@ -14,7 +14,8 @@ function loadFile(filename, callback) {
 }
 
 function onFileLoaded(filename, contents) {
-    var model = new EditorModel(contents, modeHandler.getMode(filename));
+    var model = new EditorModel(
+	contents, new ModelBackend(), modeHandler.getMode(filename));
     editors.push(new EditorController(model));
 }
 

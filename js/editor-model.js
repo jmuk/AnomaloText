@@ -19,7 +19,7 @@ function isParen(text) {
         return ParenType.PAREN_CLOSE;
 }
 
-function EditorModel(contents, mode) {
+function EditorModel(contents, backend, mode) {
     this.caretPosition = 0;
     this.idealCaretOffset = null;
     this.selection = null;
@@ -29,7 +29,7 @@ function EditorModel(contents, mode) {
     this.askHighlight();
     // TODO: this has to be merged into the system clipboard.
     this.killring = [];
-    this.editHistory = new EditingHistory();
+    this.editHistory = new EditingHistory(backend);
 }
 
 EditorModel.prototype.setView = function(view) {
@@ -729,34 +729,25 @@ EditorModel.prototype.insertTextInternal = function(text) {
     this.askHighlight();
 };
 
-EditorModel.prototype.undo = function() {
-    var historyEntry = this.editHistory.undo();
-    if (!historyEntry)
+EditorModel.prototype.applyHistory = function(entry) {
+    if (!entry)
         return;
-
     this.selection = null;
-    this.lines.jumpTo(historyEntry.pos.line);
-    this.moveCaret(historyEntry.pos.position);
-    if (historyEntry.type == 'delete') {
-        this.insertText(historyEntry.content);
+    this.lines.jumpTo(entry.pos.line);
+    this.moveCaret(entry.pos.position);
+    if (entry.type == 'insert') {
+        this.insertText(entry.content);
     } else {
-        this.deleteRange(historyEntry.pos, historyEntry.pos2);
+        this.deleteRange(entry.pos, entry.pos2);
     }
 };
 
-EditorModel.prototype.redo = function() {
-    var historyEntry = this.editHistory.redo();
-    if (!historyEntry)
-        return;
+EditorModel.prototype.undo = function() {
+    this.applyHistory(this.editHistory.undo());
+};
 
-    this.selection = null;
-    this.lines.jumpTo(historyEntry.pos.line);
-    this.moveCaret(historyEntry.pos.position);
-    if (historyEntry.type == 'insert') {
-        this.insertText(historyEntry.content);
-    } else {
-        this.deleteRange(historyEntry.pos, historyEntry.pos2);
-    }
+EditorModel.prototype.redo = function() {
+    this.applyHistory(this.editHistory.redo());
 };
 
 EditorModel.prototype.tabWidth = 2;
