@@ -65,6 +65,10 @@ EditorController.prototype.keypress = function(ev) {
     if (ev.ctrlKey || ev.altKey)
         return true;
 
+    // Do not handle single enter key.
+    if (ev.charCode == 13)
+        return true;
+
     this.model.insertText(String.fromCharCode(ev.charCode));
     ev.preventDefault();
     this.receiver.textContent = '';
