@@ -318,6 +318,9 @@ EditorModel.prototype.movePreviousLine = function(select) {
         this.caretPosition =
             this.view.getPosition({line: this.lines.currentIndex(),
                                    offset: this.idealCaretOffset});
+    } else {
+        this.caretPosition = 0;
+        this.idealCaretOffset = null;
     }
 
     if (select)
@@ -339,6 +342,9 @@ EditorModel.prototype.moveNextLine = function(select) {
         this.caretPosition =
             this.view.getPosition({line: this.lines.currentIndex(),
                                    offset: this.idealCaretOffset});
+    } else {
+        this.caretPosition = this.lines.current().length;
+        this.idealCaretOffset = null;
     }
 
     if (select)
@@ -561,7 +567,7 @@ EditorModel.prototype.deletePreviousChar = function() {
     var line = this.lines.current();
     var deletedChar;
     if (this.caretPosition == 0) {
-        if (this.lines.previous()) {
+        if (this.lines.previous() != null) {
             previousLoc.line--;
             previousLoc.position = this.lines.previous().length;
             this.lines.remove();
@@ -604,7 +610,7 @@ EditorModel.prototype.deleteNextChar = function() {
     var line = this.lines.current();
     var deletedChar;
     if (line.length == this.caretPosition) {
-        if (this.lines.next()) {
+        if (this.lines.next() != null) {
             nextLoc.line++;
             nextLoc.position = 0;
             this.lines.forward();
@@ -694,7 +700,7 @@ EditorModel.prototype.insertTextInternal = function(text) {
         var trailing = this.lines.current().slice(this.caretPosition);
         this.lines.replace(this.lines.current().slice(0, this.caretPosition) +
                            lines[0]);
-        this.lines.forward();
+        this.lines.forward(true);
         var newLineIndex = this.lines.currentIndex();
         for (var i = 1; i < lines.length - 1; i++) {
             this.lines.insert(lines[i]);

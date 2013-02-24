@@ -163,6 +163,8 @@ EditorLineView.prototype.deleteAllChars = function() {
 };
 
 EditorLineView.prototype.deleteCharsIn = function(start, end) {
+    if (start == end)
+        return;
     this.length -= Math.max(0, end - start);
     var offset = 0;
     var startIndex;
