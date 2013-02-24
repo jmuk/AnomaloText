@@ -14,6 +14,17 @@ function EditorController(model) {
     this.updateHeight();
     this.openParen = null;
     this.closeParen = null;
+
+    this.keybinds = [new DefaultKeybind(model)];
+}
+
+EditorController.prototype.registerKeybind = function(keybind) {
+  this.keybinds.push(keybind);
+};
+
+EditorController.prototype.onFileLoaded = function(fileHandler) {
+    this.model.setContents(fileHandler.contents);
+    this.model.setMode(modeHandler.getMode(fileHandler.getName()));
 }
 
 EditorController.prototype.updateHeight = function() {
@@ -39,72 +50,20 @@ EditorController.prototype.updateCaretIndicator = function() {
 };
 
 // TODO: the command list has to be customizable.
-EditorController.prototype.commands = {
-    'Left': 'moveBackward',
-    'Right': 'moveForward',
-    'Up': 'movePreviousLine',
-    'Down': 'moveNextLine',
-    'C-a': 'moveToStartOfLine',
-    'C-e': 'moveToEndOfLine',
-    'C-x': ['copyToClipboard', 'deleteSelection'],
-    'C-c': 'copyToClipboard',
-    'C-v': 'pasteFromClipboard',
-    'C-z': 'undo',
-    'C-y': 'redo',
-    'M-f': 'moveNextWord',
-    'M-b': 'movePreviousWord',
-    'Enter': 'newLine',
-    'PageUp': 'movePreviousPage',
-    'PageDown': 'moveNextPage',
-    'S-PageUp': 'movePreviousPage true',
-    'S-PageDown': 'moveNextPage true',
-    'Backspace': 'deletePreviousChar',
-    'Delete': 'deleteNextChar',
-    'S-Left': 'moveBackward true',
-    'S-Right': 'moveForward true',
-    'S-Up': 'movePreviousLine true',
-    'S-Down': 'moveNextLine true',
-    'M-S-f': 'moveNextWord true',
-    'M-S-b': 'movePreviousWord true',
-    'Tab': 'incrementIndent',
-    'S-Tab': 'decrementIndent'
-};
-
 EditorController.prototype.executeCommand = function(commandText) {
-    if (!(commandText in this.commands))
-        return false;
-
-    var consumed = false;
-    // Assumes commandText is a string or an array.
-    var command;
-    if (typeof(this.commands[commandText]) == 'string') {
-        command = [this.commands[commandText]];
-    } else {
-        command = this.commands[commandText];
+    for (var i = 0; i < this.keybinds.length; i++) {
+        if (this.keybinds[i].executeCommand(commandText))
+            return true;
     }
-    for (var i = 0; i < command.length; i++) {
-        var method_name = command[i];
-        var args = [];
-        if (method_name.indexOf(' ') > 0) {
-            var names = method_name.split(' ');
-            method_name = names[0];
-            args = names.slice(1);
-        }
-        var method = this.model[method_name];
-        if (method) {
-            method.apply(this.model, args);
-            consumed = true;
-        } else {
-            console.warn(
-                'cannot find method for ' + this.commands[commandText]);
-        }
-    }
-    return consumed;
+    return false;
 };
 
 EditorController.prototype.keypress = function(ev) {
     if (this.receiver.incomposition)
         return false;
+
+    if (ev.ctrlKey || ev.altKey)
+        return true;
 
     this.model.insertText(String.fromCharCode(ev.charCode));
     ev.preventDefault();

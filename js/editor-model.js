@@ -43,6 +43,11 @@ EditorModel.prototype.setView = function(view) {
     this.view = view;
 };
 
+EditorModel.prototype.setMode = function(mode) {
+    this.mode = mode;
+    this.askHighlight();
+}
+
 EditorModel.prototype.onHighlighted = function(editingCount, range) {
     if (!this.view)
         return;
