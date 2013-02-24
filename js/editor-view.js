@@ -1,12 +1,6 @@
-function EditorView() {
-}
-
-EditorView.prototype.Init = function(contents) {
-    var lines = contents.split('\n');
-    this.lines = [];
-    for (var i = 0; i < lines.length; i++) {
-        this.lines.push(new EditorLineView(lines[i]));
-    }
+function EditorView(contentArea) {
+    this.contentArea = contentArea;
+    this.lines = [new EditorLineView('')];
     this.selection = null;
 
     // Creating caret indicator.
@@ -24,6 +18,16 @@ EditorView.prototype.Init = function(contents) {
     this.caretPosition = null;
 
     this.parens = [];
+    this.addElementsToContents();
+}
+
+EditorView.prototype.Reset = function(lines) {
+    this.contentArea.innerHTML = '';
+    this.lines = [];
+    for (var i = 0; i < lines.length; i++) {
+        this.lines.push(new EditorLineView(lines.at(i)));
+    }
+    this.addElementsToContents();
 };
 
 EditorView.prototype.refreshHeight = function() {
@@ -54,11 +58,10 @@ EditorView.prototype.applyHighlight = function(ranges) {
     }
 };
 
-EditorView.prototype.addElementsToContents = function(container) {
+EditorView.prototype.addElementsToContents = function() {
     for (var i = 0; i < this.lines.length; i++) {
-        this.lines[i].addElementsToContents(container);
+        this.lines[i].addElementsToContents(this.contentArea);
     }
-    this.contentArea = container;
     this.updateHeight();
 };
 

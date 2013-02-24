@@ -1,7 +1,12 @@
 function Zipper(lst) {
     this.front = [];
-    this.back = lst.reverse();
-    this.length = lst.length;
+    if (lst) {
+        this.back = lst.reverse();
+        this.length = lst.length;
+    } else {
+        this.back = [];
+        this.length = 0;
+    }
 }
 
 Zipper.prototype.current = function() {

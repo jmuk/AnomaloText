@@ -6,9 +6,8 @@ function EditorController(model) {
     this.editor.appendChild(this.contentArea);
 
     this.model = model;
-    this.view = new EditorView();
-    this.model.setView(this.view);
-    this.view.addElementsToContents(this.contentArea);
+    this.view = new EditorView(this.contentArea);
+    this.model.view = this.view;
     this.createEventReceiver();
     this.lineHeight = 0;
     this.lineMargin = 0;

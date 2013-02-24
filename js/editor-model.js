@@ -19,26 +19,28 @@ function isParen(text) {
         return ParenType.PAREN_CLOSE;
 }
 
-function EditorModel(contents, backend, mode) {
+function EditorModel(backend, mode) {
     this.caretPosition = 0;
     this.idealCaretOffset = null;
     this.selection = null;
     this.mode = mode;
     this.editingCount = 0;
-    this.lines = new Zipper(contents.split('\n'));
+    this.lines = new Zipper(['']);
     this.askHighlight();
     // TODO: this has to be merged into the system clipboard.
     this.killring = [];
     this.editHistory = new EditingHistory(backend);
 }
 
+EditorModel.prototype.setContents = function(lines) {
+    this.lines = new Zipper(lines);
+    this.askHighlight();
+    if (this.view)
+        this.view.Reset(this.lines);
+};
+
 EditorModel.prototype.setView = function(view) {
     this.view = view;
-    var lines = [];
-    for (var i = 0; i < this.lines.length; i++){
-        lines.push(this.lines.at(i));
-    }
-    this.view.Init(lines.join('\n') + '\n');
 };
 
 EditorModel.prototype.onHighlighted = function(editingCount, range) {
