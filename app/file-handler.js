@@ -131,7 +131,7 @@ FileHandler.prototype.edit = function(entry) {
             }
         }
         if (entry.content != deletedText) {
-            console.err('mismatched deleted text: ' +
+            console.log('mismatched deleted text: ' +
                         entry.content + ' ' + deletedText);
         }
     }
