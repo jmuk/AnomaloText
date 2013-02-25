@@ -159,7 +159,7 @@ EditorModel.prototype.moveCaret = function(newPosition) {
 };
 
 EditorModel.prototype.startMouseSelection = function(leftOffset, lines) {
-    if (lines > this.lines.length)
+    if (lines < 0 || lines > this.lines.length)
         return;
 
     this.selection = {};
@@ -174,7 +174,7 @@ EditorModel.prototype.startMouseSelection = function(leftOffset, lines) {
 };
 
 EditorModel.prototype.updateMouseSelection = function(leftOffset, lines) {
-    if (!this.selection)
+    if (lines < 0 || !this.selection)
         return;
     lines = Math.min(Math.max(lines, 0), this.lines.length);
     this.selection.current = {
@@ -194,7 +194,7 @@ EditorModel.prototype.endMouseSelection = function() {
 };
 
 EditorModel.prototype.moveToPosition = function(leftOffset, lines) {
-    if (lines > this.lines.length)
+    if (lines < 0 || lines > this.lines.length)
         return;
     this.lines.jumpTo(lines);
     this.moveCaret(this.view.getPosition({line: lines, offset: leftOffset}));

@@ -1,6 +1,10 @@
 <html>
   <head>
-    <title>editor</title>
+    <title>AnomaloText: a packaged app editor</title>
+    <script type="text/javascript" src="../jquery-1.9.1.min.js"></script>
+    <script type="text/javascript" src="../bootstrap/bootstrap/js/bootstrap.js"></script>
+    <link rel="stylesheet" type="text/css" href="../bootstrap/bootstrap/css/bootstrap.css">
+
     <script type="text/javascript" src="../js/zipper.js"></script>
     <script type="text/javascript" src="../js/token.js"></script>
     <script type="text/javascript" src="../js/constants.js"></script>
@@ -8,7 +12,7 @@
     <script type="text/javascript" src="../js/editor-line-view.js"></script>
     <script type="text/javascript" src="../js/editor-view.js"></script>
     <script type="text/javascript" src="../js/history.js"></script>
-    <script type="text/javascript" src="../js/editor-model-backend.js"></script>
+    <script type="text/javascript" src="../js/model-backend.js"></script>
     <script type="text/javascript" src="../js/editor-model.js"></script>
     <script type="text/javascript" src="../js/keybind.js"></script>
     <script type="text/javascript" src="../js/editor-controller.js"></script>
@@ -18,15 +22,16 @@
     <link rel="stylesheet" type="text/css" href="../css/editor.css"/>
   </head>
   <body>
-    <div id="menu">
-      <div id="title">
-	AnomaloText
+    <div id="menu" class="navbar navtop">
+      <div class="navbar-inner">
+	<div class="container-fluid">
+	  <span class="brand">
+	    AnomaloText
+	  </span>
+	  <div id="indicator" class="navbar-text pull-right">
+	  </div>
+	</div>
       </div>
-      <div id="spacer">
-      </div>
-      <div id="indicator">
-      </div>
-    </div>
     <div id="editor">
     </div>
   </body>

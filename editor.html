@@ -1,6 +1,10 @@
 <html>
   <head>
     <title>editor</title>
+    <script type="text/javascript" src="./jquery-1.9.1.min.js"></script>
+    <script type="text/javascript" src="./bootstrap/bootstrap/js/bootstrap.js"></script>
+    <link rel="stylesheet" type="text/css" href="./bootstrap/bootstrap/css/bootstrap.css">
+
     <script type="text/javascript" src="./js/zipper.js"></script>
     <script type="text/javascript" src="./js/token.js"></script>
     <script type="text/javascript" src="./js/constants.js"></script>
@@ -31,12 +35,13 @@
     <link rel="stylesheet" type="text/css" href="./css/editor.css">
   </head>
   <body>
-    <div id="menu">
-      <div id="title">
-	TextEditor
-      </div>
-      <div id="spacer"></div>
-      <div id="indiactor">
+    <div id="menu" class="navbar navtop">
+      <div class="navbar-inner">
+	<div class="container-fluid">
+	  <span class="brand">
+	    TextEditor
+	  </span>
+	</div>
       </div>
     </div>
     <div id="editor">
