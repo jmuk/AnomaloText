@@ -1,7 +1,9 @@
 function Zipper(lst) {
     this.front = [];
     if (lst) {
-        this.back = lst.reverse();
+        this.back = [];
+        for (var i = 0; i < lst.length; i++)
+            this.back.push(lst[lst.length - i - 1]);
         this.length = lst.length;
     } else {
         this.back = [];

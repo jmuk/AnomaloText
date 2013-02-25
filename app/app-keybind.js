@@ -1,23 +1,17 @@
-function AppKeybind(fileHandler) {
-    function openNewWindow(bgPage) {
-        if (fileHandler.empty()) {
-            chrome.fileSystem.chooseEntry(
-                {type: 'openWritableFile'},
-                function(entry){
-                    fileHandler.setFileEntry(entry);
-                });
-        } else {
-            bgPage.openWindow();
-        }
+function AppKeybind(editor) {
+    function openNewFile(bgPage) {
+        chrome.fileSystem.chooseEntry(
+            {type: 'openWritableFile'},
+            function(entry){
+                editor.openFile(entry);
+            });
     }
     function saveFile(bgPage) {
-        if (!fileHandler.fileEntry) {
-            chrome.fileSystem.chooseEntry(
-                {type: 'saveFile'},
-                function(entry) {
-                    fileHandler.saveToEntry(entry, function() {});
-                });
-        }
+        chrome.fileSystem.chooseEntry(
+            {type: 'saveFile'},
+            function(entry) {
+                fileHandler.saveToEntry(entry, function() {});
+            });
     }
     function openNewFileAndWindow(bgPage) {
         chrome.fileSystem.chooseEntry(
@@ -27,7 +21,7 @@ function AppKeybind(fileHandler) {
             });
     }
     this.executor = {
-        'openNewWindow': openNewWindow,
+        'openNewFile': openNewFile,
         'saveFile': saveFile,
         'openNewFileAndWindow': openNewFileAndWindow
     };
@@ -45,7 +39,7 @@ AppKeybind.prototype.execInternal = function(method_name, args) {
 };
 
 AppKeybind.prototype.commands = {
-    'C-o': 'openNewWindow',
+    'C-o': 'openNewFile',
     'C-s': 'saveFile',
     'C-S-o': 'openNewFileAndWindow'
 };

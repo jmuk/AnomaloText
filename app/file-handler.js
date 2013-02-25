@@ -3,13 +3,11 @@ var FileHandler;
 (function() {
 var fileHandlerIds = 0;
 
-FileHandler = function(initialBuffer) {
+FileHandler = function() {
     this.fileEntry = null;
     this.onWriting = false;
     this.contents = [];
-    this.buffers = [];
-    if (initialBuffer)
-        this.buffers.push(initialBuffer);
+    this.buffers = {};
     this.id = fileHandlerIds++;
 };
 
@@ -30,7 +28,11 @@ FileHandler.prototype.empty = function() {
 };
 
 FileHandler.prototype.addBuffer = function(buffer) {
-    this.buffers.push(buffer);
+    this.buffers[buffer.id] = buffer;
+};
+
+FileHandler.prototype.detachBuffer = function(buffer) {
+    delete this.buffers[buffer.id];
 };
 
 FileHandler.prototype.setFileEntry = function(fileEntry) {
@@ -45,8 +47,8 @@ FileHandler.prototype.setFileEntry = function(fileEntry) {
             if (reader.readyState != FileReader.DONE)
                 return;
             fileHandler.contents = reader.result.split('\n');
-            for (var i = 0; i < fileHandler.buffers.length; i++) {
-                var buffer = fileHandler.buffers[i];
+            for (var id in fileHandler.buffers) {
+                var buffer = fileHandler.buffers[id];
                 buffer.onFileLoaded.bind(buffer)(fileHandler);
             }
         };
@@ -55,8 +57,6 @@ FileHandler.prototype.setFileEntry = function(fileEntry) {
 };
 
 FileHandler.prototype.saveToEntry = function(fileEntry, callback) {
-    if (this.fileEntry)
-        console.log('handler already has the fileEntry');
     this.fileEntry = fileEntry;
     this.onWriting = false;
     this.save(callback);

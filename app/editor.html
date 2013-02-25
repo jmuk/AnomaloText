@@ -18,6 +18,7 @@
     <script type="text/javascript" src="../js/editor-controller.js"></script>
     <script type="text/javascript" src="app-model-backend.js"></script>
     <script type="text/javascript" src="app-keybind.js"></script>
+    <script type="text/javascript" src="menu-handler.js"></script>
     <script type="text/javascript" src="app-editor.js"></script>
     <script type="text/javascript" src="editor.js"></script>
     <link rel="stylesheet" type="text/css" href="../css/editor.css"/>
@@ -29,8 +30,25 @@
 	  <span class="brand">
 	    AnomaloText
 	  </span>
-	  <div id="indicator" class="navbar-text pull-right">
-	  </div>
+	  <ul class="nav pull-right">
+	    <li class="dropdown">
+	      <a class="dropdown-toggle navtext" data-toggle="dropdown" href="#"><span id="indicator"></span><b class="caret"></b></a>
+	      <ul id="filelist-menu" class="dropdown-menu" role="menu" aria-labelledby="dLabel">
+		<li role="presentation">
+		  <a href="#" role="menuitem" tabindex="-1" id="menu-open-window">
+		    Open a new window
+		</a></li>
+		<li role="presentation">
+		  <a href="#" role="menuitem" tabindex="-1" id="menu-save-file">
+		    Save file to
+		</a></li>
+		<li role="presentation">
+		  <a href="#" role="menuitem" tabindex="-1" id="menu-open-file">
+		    Open a new file
+		</a></li>
+	      </ul>
+	    </li>
+	  </ul>
 	</div>
       </div>
     <div id="editor">
