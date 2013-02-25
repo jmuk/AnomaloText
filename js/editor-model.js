@@ -37,6 +37,7 @@ EditorModel.prototype.setContents = function(lines) {
     this.askHighlight();
     if (this.view)
         this.view.Reset(this.lines);
+    this.caretPosition = 0;
 };
 
 EditorModel.prototype.setView = function(view) {
