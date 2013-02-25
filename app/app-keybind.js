@@ -1,4 +1,4 @@
-function AppKeybind(fileHandler, editor) {
+function AppKeybind(fileHandler) {
     function openNewWindow(bgPage) {
         if (fileHandler.empty()) {
             chrome.fileSystem.chooseEntry(

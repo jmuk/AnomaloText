@@ -30,6 +30,7 @@ Keybind.prototype.executeCommand = function(commandText) {
         if (this.execInternal(method_name, args))
             consumed = true;
     }
+    return consumed;
 };
 
 function DefaultKeybind(model) {

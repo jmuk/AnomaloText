@@ -3,7 +3,7 @@ var defaultParams = {
     minHeight: 400
 };
 
-var fileHandlers = [];
+var fileHandlers = {};
 
 var buffers = {};
 
@@ -29,7 +29,7 @@ function switchBufferTo(fileId, callback) {
 
 function createEmptyFileBuffer(callback) {
     var fileHandler = new FileHandler();
-    fileHandlers.push(fileHandler);
+    fileHandlers[fileHandler.getFullPath()] = fileHandler;
     callback(fileHandler);
 }
 function openWindow(callback) {
@@ -53,9 +53,9 @@ function openWindow(callback) {
 function openNewFileAndWindow(fileEntry) {
     var fileHandler = new FileHandler();
     function newFileAndWindowCallback(callback) {
-        fileHandlers.push(fileHandler);
         callback(fileHandler);
         fileHandler.setFileEntry(fileEntry);
+        fileHandlers[fileHandler.getFullPath()] = fileHandler;
     }
     openWindow(newFileAndWindowCallback);
 };

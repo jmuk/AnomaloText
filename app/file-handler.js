@@ -17,8 +17,16 @@ FileHandler.prototype.getName = function() {
     return this.fileEntry ? this.fileEntry.name : '<empty>';
 };
 
+FileHandler.prototype.getFullPath = function() {
+  return this.fileEntry ? this.fileEntry.fullPath : ('<empty>-' + this.id);
+};
+
 FileHandler.prototype.empty = function() {
-    return this.contents.length == 0;  
+    if (this.contents.length == 0)
+        return true;
+    if (this.contents.length == 1 && this.contents[0].length == 0)
+        return true;
+    return false;
 };
 
 FileHandler.prototype.addBuffer = function(buffer) {

@@ -24,8 +24,7 @@ EditorController.prototype.registerKeybind = function(keybind) {
 
 EditorController.prototype.onFileLoaded = function(fileHandler) {
     this.model.setContents(fileHandler.contents);
-    this.model.setMode(modeHandler.getMode(fileHandler.getName()));
-}
+};
 
 EditorController.prototype.updateHeight = function() {
     this.lineHeight =
@@ -62,12 +61,13 @@ EditorController.prototype.keypress = function(ev) {
     if (this.receiver.incomposition)
         return false;
 
+    ev.preventDefault();
     if (ev.ctrlKey || ev.altKey)
-        return true;
+        return false;
 
-    // Do not handle single enter key.
-    if (ev.charCode == 13)
-        return true;
+    // Ignore control codes.
+    if (ev.charCode < 0x20)
+        return false;
 
     this.model.insertText(String.fromCharCode(ev.charCode));
     ev.preventDefault();
@@ -220,6 +220,7 @@ EditorController.prototype.createEventReceiver = function() {
             this.view.getVisibleLines());
         this.updateCaretIndicator();
     }).bind(this);
+    window.onfocus = this.enforceFocus.bind(this);
     
     receiverContainer.appendChild(receiver);
     this.editor.appendChild(receiverContainer);
