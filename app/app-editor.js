@@ -28,7 +28,10 @@ AppEditor.prototype.onFileLoaded = function(fileHandler) {
 };
 
 AppEditor.prototype.saveFile = function(fileEntry) {
-    this.fileHandler.saveToEntry(fileEntry);
+    this.fileHandler.saveToEntry(fileEntry, (function() {
+        this.model.setMode(modeHandler.getMode(fileHandler.getName()));
+        this.backend.updateIndicator();
+    }).bind(this));
 };
 
 AppEditor.prototype.openFile = function(fileEntry) {
