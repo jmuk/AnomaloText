@@ -184,26 +184,32 @@ EditorController.prototype.createEventReceiver = function() {
         this.model.insertText(ev.data);
         this.updateCaretIndicator();
     }).bind(this));
-    window.onmousedown = (function(ev) {
+    window.addEventListener('mousedown', (function(ev) {
         this.enforceFocus();
         ev.preventDefault();
         this.mouseSelection = true;
         var loc = this.getLocationInContentArea(ev);
         this.model.startMouseSelection(loc.x, loc.lines);
         this.updateCaretIndicator();
-    }).bind(this);
-    window.onmousemove = (function(ev) {
+    }).bind(this));
+    window.addEventListener('mousemove', (function(ev) {
         if (!this.mouseSelection)
             return true;
 
+        // something wrong happened, editor thinks drag is
+        // ongoing although no mouse buttons are pressed.
+        if (ev.buttons == 0) {
+            this.model.endMouseSelection();
+            return true;
+        }
         this.enforceFocus();
         ev.preventDefault();
         var loc = this.getLocationInContentArea(ev);
         this.model.updateMouseSelection(loc.x, loc.lines);
         this.updateCaretIndicator();
         return false;
-    }).bind(this);
-    window.onmouseup = (function(ev) {
+    }).bind(this));
+    window.addEventListener('mouseup', (function(ev) {
         this.enforceFocus();
         this.mouseSelection = false;
         this.model.endMouseSelection();
@@ -211,16 +217,16 @@ EditorController.prototype.createEventReceiver = function() {
         var loc = this.getLocationInContentArea(ev);
         this.model.moveToPosition(loc.x, loc.lines);
         this.updateCaretIndicator();
-    }).bind(this);
-    window.onresize = (function(ev) {
+    }).bind(this));
+    window.addEventListener('resize', (function(ev) {
         this.view.refreshHeight();
-    }).bind(this);
+    }).bind(this));
     this.editor.onscroll = (function(ev) {
         this.model.ensureCaretVisible(
             this.view.getVisibleLines());
         this.updateCaretIndicator();
     }).bind(this);
-    window.onfocus = this.enforceFocus.bind(this);
+    window.addEventListener('focus', this.enforceFocus.bind(this));
     
     receiverContainer.appendChild(receiver);
     this.editor.appendChild(receiverContainer);
