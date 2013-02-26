@@ -182,6 +182,8 @@ EditorModel.prototype.updateMouseSelection = function(leftOffset, lines) {
         line: lines,
         position: this.view.getPosition({line: lines, offset: leftOffset})
     };
+    this.lines.jumpTo(this.selection.current.line);
+    this.moveCaret(this.selection.current.position);
 };
 
 EditorModel.prototype.endMouseSelection = function() {

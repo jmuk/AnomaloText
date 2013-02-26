@@ -4,6 +4,7 @@ function EditorController(model) {
     this.contentArea = document.createElement('div');
     this.contentArea.className = 'content-area';
     this.editor.appendChild(this.contentArea);
+    this.ticker = new TickerController(document.getElementById('ticker'));
 
     this.model = model;
     this.view = new EditorView(this.contentArea);
@@ -34,13 +35,14 @@ EditorController.prototype.updateHeight = function() {
 
 EditorController.prototype.updateCaretIndicator = function() {
     var selection = this.model.getSelection();
+    var loc = this.model.getCaretLocation();
+    var caretPosition = this.view.getCaretPosition(loc);
+    this.ticker.onCaretMove(loc, caretPosition);
     if (selection) {
         this.view.hideCaretIndicator();
     } else {
-        var loc = this.model.getCaretLocation();
         this.view.showCaretIndicator();
         this.view.updateCaretIndicator(loc);
-        var caretPosition = this.view.getCaretPosition(loc);
         this.receiverContainer.style.top = caretPosition.top + 'px';
         this.receiverSpacer.style.width = caretPosition.left + 'px';
     }
@@ -234,4 +236,5 @@ EditorController.prototype.createEventReceiver = function() {
     this.receiverContainer = receiverContainer;
     this.receiverSpacer = receiverSpacer;
     this.receiver = receiver;
+    this.updateCaretIndicator();
 };
