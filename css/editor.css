@@ -9,18 +9,6 @@ body {
     position: relative;
     overflow: auto;
 }
-#ticker {
-    background-color: white;
-    bottom: 0;
-    border-top: black solid 1px;
-    border-left: black solid 1px;
-    border-top-left-radius: 2px;
-    font-size: 12px;
-    position: fixed;
-    right: 0;
-    min-width: 200px;
-    text-align: right;
-}
 .content-area {
     position: absolute;
     z-index: 1;
