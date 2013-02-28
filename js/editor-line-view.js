@@ -266,28 +266,12 @@ EditorLineView.prototype.insertTextAt = function(chunk, position) {
             return;
         } else if (p + token.length == position){
             var previousToken = token;
-            var nextToken;
-            if (i < this.tokens.length - 1)
-                nextToken = this.tokens[i + 1];
-            var newTokens = Token.getTokens(chunk, null);
-            if (newTokens.length == 1) {
-                if (previousToken.type == newTokens[0].type) {
-                    previousToken.setText(previousToken.text + chunk);
-                    return;
-                } else if (nextToken && nextToken.type == newTokens[0].type) {
-                    nextToken.setText(chunk + nextToken.text);
-                    return;
-                }
+            var newText = previousToken.text + chunk;
+            var newTokens = Token.getTokens(newText, null);
+            if (newTokens.length == 1 && previousToken.type == newTokens[0].type) {
+                previousToken.setText(newText);
+                return;
             }
-            var nextElement = nextToken ? nextToken.element : this.linebreak;
-            var parent = nextElement.parentNode;
-            for (var j = 0; j < newTokens.length; j++) {
-                var newToken = newTokens[j];
-                newToken.createElement();
-                parent.insertBefore(newToken.element, nextElement);
-            }
-            this.tokens = this.tokens.slice(0, i).concat(newTokens, this.tokens.slice(i));
-            return;
         }
         p += token.length;
     }
