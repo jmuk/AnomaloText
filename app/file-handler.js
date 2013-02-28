@@ -72,10 +72,14 @@ FileHandler.prototype.save = function(callback) {
 
     var fileHandler = this;
     this.fileEntry.createWriter(function(writer) {
-        fileHandler.onWriting = true;
-        writer.onwriteend = function() {
+        function onTruncateEnd() {
             fileHandler.onWriting = false;
             callback(true);
+        }
+        fileHandler.onWriting = true;
+        writer.onwriteend = function() {
+            writer.onwriteend = onTruncateEnd();
+            writer.truncate(writer.position);
         };
         writer.onerror = function() {
             console.log('error happens during saving');
