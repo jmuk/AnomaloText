@@ -132,10 +132,14 @@ FileHandler.prototype.edit = function(entry) {
             }
             line = this.contents[entry.pos2.line];
             deletedText += line.slice(0, entry.pos2.position);
-            this.contents[entry.pos2.position] = line.slice(entry.pos2.position);
-            if (entry.pos.line < entry.pos2.line - 1) {
+            var lastRemoved = (line.length == entry.pos2.position);
+            if (!lastRemoved) {
+                this.contents[entry.pos2.line] = line.slice(entry.pos2.position);
+            }
+            var offset = lastRemoved ? 0 : 1;
+            if (entry.pos.line < entry.pos2.line - offset) {
                 this.contents.splice(entry.pos.line + 1,
-                                     entry.pos2.line - entry.pos.line - 1);
+                                     entry.pos2.line - entry.pos.line - offset);
             }
         }
         if (entry.content != deletedText) {

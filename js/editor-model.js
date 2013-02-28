@@ -30,6 +30,7 @@ function EditorModel(backend, mode) {
     // TODO: this has to be merged into the system clipboard.
     this.killring = [];
     this.editHistory = new EditingHistory(backend);
+    this.modeObservers = [];
 }
 
 EditorModel.prototype.setContents = function(lines) {
@@ -44,10 +45,17 @@ EditorModel.prototype.setView = function(view) {
     this.view = view;
 };
 
+EditorModel.prototype.addModeObserver = function(observer) {
+    this.modeObservers.push(observer);
+    observer.onModeChanged(this.mode);
+};
+
 EditorModel.prototype.setMode = function(mode) {
     this.mode = mode;
     this.askHighlight();
-}
+    for (var i = 0; i < this.modeObservers.length; i++)
+        this.modeObservers[i].onModeChanged(mode);
+};
 
 EditorModel.prototype.onHighlighted = function(editingCount, range) {
     if (!this.view)
@@ -535,9 +543,10 @@ EditorModel.prototype.deleteRange = function(start, end) {
         deletedLines.push(
             this.lines.current().slice(0, end.position));
         deletedText = deletedLines.join("\n");
+        var removed = false;
         if (end.position > 0) {
             if (end.position == this.lines.current().length) {
-                this.lines.remove();
+                removed = this.lines.remove();
             } else {
                 this.lines.replace(
                     this.lines.current().slice(end.position));
@@ -545,13 +554,11 @@ EditorModel.prototype.deleteRange = function(start, end) {
         }
         this.lines.backward();
         this.caretPosition = this.lines.current().length;
-        if (end.position > 0) {
+        if (!removed) {
             this.lines.replace(this.lines.current() + this.lines.next());
             this.lines.forward();
             this.lines.remove();
             this.lines.backward();
-        } else {
-            this.lines.forward();
         }
     }
     this.askHighlight();
