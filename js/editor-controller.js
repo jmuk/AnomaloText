@@ -4,6 +4,7 @@ function EditorController(model) {
     this.contentArea = document.createElement('div');
     this.contentArea.className = 'content-area';
     this.editor.appendChild(this.contentArea);
+    this.caretObservers = [];
 
     this.model = model;
     this.view = new EditorView(this.contentArea);
@@ -17,6 +18,11 @@ function EditorController(model) {
 
     this.keybinds = [new DefaultKeybind(model)];
 }
+
+EditorController.prototype.addCaretObserver = function(observer) {
+    this.caretObservers.push(observer);
+    this.updateCaretIndicator();
+};
 
 EditorController.prototype.registerKeybind = function(keybind) {
   this.keybinds.push(keybind);
@@ -35,10 +41,12 @@ EditorController.prototype.updateHeight = function() {
 EditorController.prototype.updateCaretIndicator = function() {
     var selection = this.model.getSelection();
     var loc = this.model.getCaretLocation();
-    var caretPosition = this.view.getCaretPosition(loc);
+    for (var i = 0; i < this.caretObservers.length; i++)
+        this.caretObservers[i].onCaretMoved(loc);
     if (selection) {
         this.view.hideCaretIndicator();
     } else {
+        var caretPosition = this.view.getCaretPosition(loc);
         this.view.showCaretIndicator();
         this.view.updateCaretIndicator(loc);
         this.receiverContainer.style.top = caretPosition.top + 'px';
@@ -186,7 +194,6 @@ EditorController.prototype.createEventReceiver = function() {
     }).bind(this));
     window.addEventListener('mousedown', (function(ev) {
         this.enforceFocus();
-        ev.preventDefault();
         this.mouseSelection = true;
         var loc = this.getLocationInContentArea(ev);
         this.model.startMouseSelection(loc.x, loc.lines);

@@ -15,6 +15,7 @@ AppEditor = function(fileHandler) {
     this.backend.updateIndicator();
     // TODO: allow multiple editors in a window.
     this.id = window.editorWindowId;
+    this.metadata = new MetadataManager(this.controller, this.model);
 
     this.controller.registerKeybind(new AppKeybind(this));
     this.menuHandler = new MenuHandler(this);

@@ -147,7 +147,10 @@ function parseContents(contents) {
 function messageHandler(data) {
     var result;
     if (data.command == 'metadata') {
-        result = {pattern: /[a-zA-Z_0-9]+/, parens: '[{()}]'};
+        result = {shortname: 'py',
+                  longname: 'python mode',
+                  pattern: /[a-zA-Z_0-9]+/,
+                  parens: '[{()}]'};
     } else if (data.command == 'highlight') {
         result = {id: data.id, callback_id: data.callback_id,
 		  range: parseContents(data.contents)};

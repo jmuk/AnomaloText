@@ -4,6 +4,8 @@ function Mode(worker) {
         this.worker.addEventListener('message', this.messageHandler.bind(this));
         this.worker.postMessage({command:'metadata'});
     }
+    this.shortname = '';
+    this.longname = 'default mode';
     this.pattern = /[a-zA-Z_0-9]+/;
     this.parens = "({[]})";
     this.callbacks = {};
@@ -12,6 +14,8 @@ function Mode(worker) {
 
 Mode.prototype.messageHandler = function(e) {
     if (e.data.command == 'metadata') {
+        this.shortname = e.data.shortname;
+        this.longname = e.data.longname;
         this.pattern = e.data.pattern;
         this.parens = e.data.parens;
     } else if (e.data.command == 'highlight') {
