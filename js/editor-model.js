@@ -41,10 +41,6 @@ EditorModel.prototype.setContents = function(lines) {
     this.caretPosition = 0;
 };
 
-EditorModel.prototype.setView = function(view) {
-    this.view = view;
-};
-
 EditorModel.prototype.addModeObserver = function(observer) {
     this.modeObservers.push(observer);
     observer.onModeChanged(this.mode);

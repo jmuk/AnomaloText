@@ -1,4 +1,9 @@
 var editor = null;
+
+function onModeLoaded(mode) {
+    editor.onModeLoaded(mode);
+}
+
 (function() {
 
 function createEditor(fileHandler) {

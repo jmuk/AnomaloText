@@ -28,6 +28,10 @@ AppEditor.prototype.onFileLoaded = function(fileHandler) {
     this.controller.onFileLoaded(fileHandler);
 };
 
+AppEditor.prototype.onModeLoaded = function(newMode) {
+    this.metadata.onModeChanged(newMode);
+};
+
 AppEditor.prototype.saveFile = function(fileEntry) {
     this.fileHandler.saveToEntry(fileEntry, (function() {
         this.model.setMode(modeHandler.getMode(fileHandler.getName()));

@@ -18,6 +18,8 @@ Mode.prototype.messageHandler = function(e) {
         this.longname = e.data.longname;
         this.pattern = e.data.pattern;
         this.parens = e.data.parens;
+        if (window.onModeLoaded)
+            window.onModeLoaded(this);
     } else if (e.data.command == 'highlight') {
         var callback = this.callbacks[e.data.callback_id];
         if (callback) {

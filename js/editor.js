@@ -1,4 +1,5 @@
 var editors = [];
+
 (function() {
 var modeHandler = new ModeHandler('./modes/');
 
