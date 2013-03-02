@@ -58,7 +58,7 @@ MenuHandler.prototype.updateFileList = function(fileList) {
         }
     }
     if (dividerIndex >= 0) {
-        while (menu.childNodes.length >= dividerIndex)
+        while (menu.childNodes.length > dividerIndex)
             menu.removeChild(menu.lastChild);
     }
 
