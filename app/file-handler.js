@@ -114,12 +114,12 @@ FileHandler.prototype.edit = function(entry) {
             var line = this.contents[lineNum];
             var remaining = line.slice(entry.pos.position);
             this.contents[lineNum] = line.slice(0, entry.pos.position) + lines[0];
-            line = this.contents[lineNum + 1];
-            this.contents[lineNum + 1] = lines[lines.length - 1] + remaining + line;
-            if (line.length > 2) {
+            this.contents.splice(
+                lineNum + 1, 0, lines[lines.length - 1] + remaining);
+            if (lines.length > 2) {
                 this.contents.splice.apply(
                     this.contents,
-                    [lineNum, 0].concat(line.slice(1, line.length - 1)));
+                    [lineNum + 1, 0].concat(lines.slice(1, lines.length - 1)));
             }
         }
     } else {
