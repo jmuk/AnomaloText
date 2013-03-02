@@ -4,10 +4,17 @@ function onModeLoaded(mode) {
     editor.onModeLoaded(mode);
 }
 
+function updateFileList() {
+    chrome.runtime.getBackgroundPage(function(bgPage) {
+        bgPage.updateFileList(window.fileListUpdated);
+    });
+}
+
 (function() {
 
 function createEditor(fileHandler) {
     editor = new AppEditor(fileHandler);
+    updateFileList();
 }
 
 function windowOnLoad() {
@@ -16,5 +23,11 @@ function windowOnLoad() {
     });
 }
 
+function windowOnFocus() {
+    if (editor)
+        editor.syncFileHandler();
+}
+
 window.addEventListener('load', windowOnLoad);
+window.addEventListener('focus', windowOnFocus);
 })();

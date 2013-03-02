@@ -13,17 +13,9 @@ function AppKeybind(editor) {
                 fileHandler.saveToEntry(entry, function() {});
             });
     }
-    function openNewFileAndWindow(bgPage) {
-        chrome.fileSystem.chooseEntry(
-            {type: 'openWritableFile'},
-            function(entry){
-                bgPage.openNewFileAndWindow(entry);
-            });
-    }
     this.executor = {
         'openNewFile': openNewFile,
         'saveFile': saveFile,
-        'openNewFileAndWindow': openNewFileAndWindow
     };
 };
 
@@ -40,6 +32,5 @@ AppKeybind.prototype.execInternal = function(method_name, args) {
 
 AppKeybind.prototype.commands = {
     'C-o': 'openNewFile',
-    'C-s': 'saveFile',
-    'C-S-o': 'openNewFileAndWindow'
+    'C-s': 'saveFile'
 };

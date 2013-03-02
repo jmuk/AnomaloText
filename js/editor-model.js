@@ -47,6 +47,9 @@ EditorModel.prototype.addModeObserver = function(observer) {
 };
 
 EditorModel.prototype.setMode = function(mode) {
+    if (this.mode == mode)
+        return;
+
     this.mode = mode;
     this.askHighlight();
     for (var i = 0; i < this.modeObservers.length; i++)

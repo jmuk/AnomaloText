@@ -23,7 +23,7 @@ AppModelBackend.prototype.maybeSave = function(lastEdited) {
 };
 
 AppModelBackend.prototype.updateFileHandler = function(fileHandler) {
-    if (this.fileHandler.id != fileHandler)
+    if (this.fileHandler.id != fileHandler.id)
         this.fileHandler = fileHandler;
     this.edited = false;
     this.updateIndicator();

@@ -5,12 +5,12 @@ var defaultParams = {
 
 var fileHandlers = {};
 
-var appWindows = {};
-
 var menus = [];
 
 var lastOpenedAppWindow;
 var newId = 0;
+
+var emptyFileHandler;
 
 function onLaunched() {
     openWindow();
@@ -40,23 +40,38 @@ function switchBufferTo(editor, fileHandlerId) {
 
 function openNewFile(fileEntry, editor) {
     editor.fileHandler.detachBuffer(editor);
+    for (var k in fileHandlers) {
+        var fileHandler = fileHandlers[k];
+        if (fileHandler.fileEntry &&
+            fileEntry.fullPath == fileHandler.fileEntry.fullPath) {
+            fileHandler.addBuffer(editor);
+            fileHandler.setFileEntry(fileEntry);
+            return;
+        }
+    }
+
     var fileHandler = new FileHandler();
     fileHandlers[fileHandler.id] = fileHandler;
     fileHandler.addBuffer(editor);
     fileHandler.setFileEntry(fileEntry);
-    updateFileList();
 };
 
 function loadFile(fileEntry, editor) {
+    if (editor.fileHandler == emptyFileHandler)
+        emptyFileHandler = null;
     editor.fileHandler.setFileEntry(fileEntry);
-    updateFileList();
 }
 
 function createEmptyFileBuffer(callback) {
+    if (emptyFileHandler) {
+        callback(emptyFileHandler);
+        return;
+    }
+
     var fileHandler = new FileHandler();
     fileHandlers[fileHandler.id] = fileHandler;
+    emptyFileHandler = fileHandler;
     callback(fileHandler);
-    updateFileList();
 }
 
 function openWindow(callback) {
@@ -66,7 +81,6 @@ function openWindow(callback) {
     function onCreated(appWindow) {
         newId++;
         lastOpenedAppWindow = appWindow;
-        appWindows[newId] = appWindow;
         appWindow.onRegistered = callback;
     };
     var params = {};
@@ -77,46 +91,18 @@ function openWindow(callback) {
     chrome.app.window.create('app/editor.html', params, onCreated);
 };
 
-function openNewFileAndWindow(fileEntry) {
-    var fileHandler = new FileHandler();
-    function newFileAndWindowCallback(callback) {
-        callback(fileHandler);
-        fileHandler.setFileEntry(fileEntry);
-        fileHandlers[fileHandler.id] = fileHandler;
-        fileListUpdated();
-    }
-    openWindow(newFileAndWindowCallback);
-};
-
 function registerWindow(w, callback) {
     if (lastOpenedAppWindow &&
         lastOpenedAppWindow.contentWindow == w) {
-        w.editorWindowId = newId;
         lastOpenedAppWindow.onRegistered(callback);
-        return;
-    };
-  for (var id in appWindows) {
-      var appWindow = appWindows[id];
-      if (appWindow.contentWindow == w) {
-          w.editorWindowId = id;
-          appWindow.onRegistered(callback);
-          return;
-      }
-  }
-};
-
-function onWindowClosed(windowId) {
-    var buffer = appWindows[windowId];
-    delete appWindows[windowId];
-    // TODO: reset all resources if |appWindows| is empty.
-};
-
-function updateFileList() {
-    var fileList = getFileList();
-    for (id in appWindows) {
-        var appWindow = appWindows[id];
-        appWindow.contentWindow.fileListUpdated(fileList);
+    } else {
+        createEmptyFileBuffer(callback);
     }
+};
+
+function updateFileList(callback) {
+    var fileList = getFileList();
+    callback(fileList);
 }
 
 chrome.app.runtime.onLaunched.addListener(onLaunched);
