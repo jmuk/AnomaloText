@@ -275,6 +275,13 @@ EditorLineView.prototype.insertTextAt = function(chunk, position) {
         }
         p += token.length;
     }
+    var newTokens = Token.getTokens(chunk, null);
+    var parent = this.linebreak.parentNode;
+    for (var i = 0; i < newTokens.length; i++) {
+        newTokens[i].createElement();
+        parent.insertBefore(newTokens[i].element, this.linebreak);
+    }
+    this.tokens = this.tokens.concat(newTokens);
 };
 
 EditorLineView.prototype.concat = function(another) {
