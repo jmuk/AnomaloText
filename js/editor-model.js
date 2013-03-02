@@ -116,6 +116,8 @@ EditorModel.prototype.getLineCount = function() {
 
 EditorModel.prototype.maybeHighlightParens = function() {
     this.view.clearParenHighlight();
+    if (this.caretPosition == 0)
+        return;
     var line = this.lines.current();
     var origin = {line: this.lines.currentIndex(),
                   position: this.caretPosition - 1};

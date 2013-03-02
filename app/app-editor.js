@@ -27,7 +27,6 @@ AppEditor.prototype.onFileLoaded = function(fileHandler) {
 };
 
 AppEditor.prototype.syncFileHandler = function() {
-    console.log(this.fileHandler);
     this.backend.updateFileHandler(this.fileHandler);
     this.model.setMode(modeHandler.getMode(this.fileHandler.getName()));
     this.controller.onFileLoaded(this.fileHandler);

@@ -30,6 +30,7 @@ EditorController.prototype.registerKeybind = function(keybind) {
 
 EditorController.prototype.onFileLoaded = function(fileHandler) {
     this.model.setContents(fileHandler.contents);
+    this.updateCaretIndicator();
 };
 
 EditorController.prototype.updateHeight = function() {

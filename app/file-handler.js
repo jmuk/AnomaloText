@@ -6,7 +6,7 @@ var fileHandlerIds = 0;
 FileHandler = function() {
     this.fileEntry = null;
     this.onWriting = false;
-    this.contents = [];
+    this.contents = [''];
     this.buffers = {};
     this.id = fileHandlerIds++;
 };
@@ -47,6 +47,8 @@ FileHandler.prototype.setFileEntry = function(fileEntry) {
             if (reader.readyState != FileReader.DONE)
                 return;
             fileHandler.contents = reader.result.split('\n');
+            if (fileHandler.contents.length == 0)
+                fileHandler.contents = [''];
             for (var id in fileHandler.buffers) {
                 var buffer = fileHandler.buffers[id];
                 buffer.onFileLoaded.bind(buffer)(fileHandler);
