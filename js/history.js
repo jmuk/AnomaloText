@@ -59,15 +59,11 @@ EditingHistoryEntry.prototype.inversed = function() {
     return new EditingHistoryEntry(inversedType, this.content, this.pos, this.pos2);
 };
 
-function EditingHistory(backend) {
-    this.backend = backend;
+function EditingHistory() {
     this.entries = new Zipper([]);
 }
 
 EditingHistory.prototype.push = function(newEntry) {
-    // the backend doesn't care the merge of history entry.
-    this.backend.addHistory(newEntry);
-
     var previous = this.entries.previous();
     this.entries.back = [];
     if (previous) {
@@ -81,7 +77,6 @@ EditingHistory.prototype.undo = function() {
     if (!this.entries.backward())
 	return null;
     var result = this.entries.current().inversed();
-    this.backend.addHistory(result);
     return result;
 };
 
@@ -89,6 +84,5 @@ EditingHistory.prototype.redo = function() {
     var current = this.entries.current();
     if (!this.entries.forward(true))
 	return null;
-    this.backend.addHistory(current);
     return current;
 };

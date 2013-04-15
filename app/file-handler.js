@@ -6,9 +6,13 @@ var fileHandlerIds = 0;
 FileHandler = function() {
     this.fileEntry = null;
     this.onWriting = false;
-    this.contents = [''];
+    this.content = new Content();
     this.buffers = {};
     this.id = fileHandlerIds++;
+
+    this.edited = false;
+    this.lastEdited = 0;
+    this.updateIndicator();
 };
 
 FileHandler.prototype.getName = function() {
@@ -20,9 +24,9 @@ FileHandler.prototype.getFullPath = function() {
 };
 
 FileHandler.prototype.empty = function() {
-    if (this.contents.length == 0)
+    if (this.content.getLines() == 0)
         return true;
-    if (this.contents.length == 1 && this.contents[0].length == 0)
+    if (this.content.getLines() == 1 && this.content.lines[0].length == 0)
         return true;
     return false;
 };
@@ -46,9 +50,7 @@ FileHandler.prototype.setFileEntry = function(fileEntry) {
         reader.onloadend = function(e) {
             if (reader.readyState != FileReader.DONE)
                 return;
-            fileHandler.contents = reader.result.split('\n');
-            if (fileHandler.contents.length == 0)
-                fileHandler.contents = [''];
+            fileHandler.content.lines = reader.result.split('\n');
             for (var id in fileHandler.buffers) {
                 var buffer = fileHandler.buffers[id];
                 buffer.onFileLoaded.bind(buffer)(fileHandler);
@@ -89,70 +91,41 @@ FileHandler.prototype.save = function(callback) {
             callback(false);
         };
 
-        var contents = [];
-        for (var i = 0; i < fileHandler.contents.length; i++) {
-            contents.push(fileHandler.contents[i]);
-            contents.push('\n');
-        }
-        writer.write(new Blob(contents, {type: 'text/plain'}));
+        fileHandler.content.getFullText(function(text) {
+            writer.write(new Blob(text, {type: 'text/plain'})); });
     });
 };
 
-FileHandler.prototype.edit = function(entry) {
-    if (entry.type == 'insert') {
-        while (this.contents.length <= entry.pos2.line) {
-            this.contents.push('');
-        }
-        var lines = entry.content.split('\n');
-        if (lines.length == 1) {
-            var line = this.contents[entry.pos.line];
-            line = line.slice(0, entry.pos.position) + lines[0] +
-                line.slice(entry.pos.position);
-            this.contents[entry.pos.line] = line;
-        } else {
-            var lineNum = entry.pos.line;
-            var line = this.contents[lineNum];
-            var remaining = line.slice(entry.pos.position);
-            this.contents[lineNum] = line.slice(0, entry.pos.position) + lines[0];
-            this.contents.splice(
-                lineNum + 1, 0, lines[lines.length - 1] + remaining);
-            if (lines.length > 2) {
-                this.contents.splice.apply(
-                    this.contents,
-                    [lineNum + 1, 0].concat(lines.slice(1, lines.length - 1)));
-            }
-        }
-    } else {
-        var deletedText = '';
-        if (entry.pos.line == entry.pos2.line) {
-            var line = this.contents[entry.pos.line];
-            deletedText = line.slice(entry.pos.position, entry.pos2.position);
-            this.contents[entry.pos.line] = line.slice(0, entry.pos.position) +
-                line.slice(entry.pos2.position);
-        } else {
-            var line = this.contents[entry.pos.line];
-            deletedText = line.slice(entry.pos.position) + '\n';
-            this.contents[entry.pos.line] = line.slice(0, entry.pos.position);
-            for (var i = entry.pos.line + 1; i < entry.pos2.line; i++) {
-                deletedText += this.contents[i] + '\n';
-            }
-            line = this.contents[entry.pos2.line];
-            deletedText += line.slice(0, entry.pos2.position);
-            var lastRemoved = (line.length == entry.pos2.position);
-            if (!lastRemoved) {
-                this.contents[entry.pos2.line] = line.slice(entry.pos2.position);
-            }
-            var offset = lastRemoved ? 0 : 1;
-            if (entry.pos.line < entry.pos2.line - offset) {
-                this.contents.splice(entry.pos.line + 1,
-                                     entry.pos2.line - entry.pos.line - offset);
-            }
-        }
-        if (entry.content != deletedText) {
-            console.log('mismatched deleted text: ' +
-                        entry.content + ' ' + deletedText);
-        }
+FileHandler.prototype.maybeSave = function(lastEdited) {
+    if (this.lastEdited != lastEdited)
+        return;
+
+    if (this.onWriting) {
+        window.setTimeout((function() { this.maybeSave(lastEdited); }).bind(this),
+                          500 /* msec */);
+        return;
     }
+
+    this.save((function(succeeded) {
+        this.edited = false;
+        this.updateIndicator();
+    }).bind(this));
+};
+
+FileHandler.prototype.updateIndicator = function() {
+    var fileName = this.fileHandler.getName();
+    if (this.edited)
+        fileName += '*';
+    document.getElementById('indicator').textContent = fileName;
+};
+
+FileHandler.prototype.onContentChanged = function(content) {
+    var lastEdited = (new Date()).getTime();
+    this.lastEdited = lastEdited;
+    this.edited = true;
+    this.updateIndicator();
+    window.setTimeout((function() { this.maybeSave(lastEdited); }).bind(this),
+                      500 /* msec */);
 };
 
 })();

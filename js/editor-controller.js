@@ -29,7 +29,7 @@ EditorController.prototype.registerKeybind = function(keybind) {
 };
 
 EditorController.prototype.onFileLoaded = function(fileHandler) {
-    this.model.setContents(fileHandler.contents);
+    this.model.setContents(fileHandler.content);
     this.updateCaretIndicator();
 };
 
@@ -41,7 +41,7 @@ EditorController.prototype.updateHeight = function() {
 
 EditorController.prototype.updateCaretIndicator = function() {
     var selection = this.model.getSelection();
-    var loc = this.model.getCaretLocation();
+    var loc = this.model.location;
     for (var i = 0; i < this.caretObservers.length; i++)
         this.caretObservers[i].onCaretMoved(loc);
     if (selection) {
@@ -54,7 +54,6 @@ EditorController.prototype.updateCaretIndicator = function() {
         this.receiverSpacer.style.width = caretPosition.left + 'px';
     }
     this.view.updateSelection(selection);
-    this.model.maybeHighlightParens();
 };
 
 // TODO: the command list has to be customizable.

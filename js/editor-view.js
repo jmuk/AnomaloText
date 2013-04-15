@@ -21,11 +21,11 @@ function EditorView(contentArea) {
     this.addElementsToContents();
 }
 
-EditorView.prototype.Reset = function(lines) {
+EditorView.prototype.Reset = function(content) {
     this.contentArea.innerHTML = '';
     this.lines = [];
-    for (var i = 0; i < lines.length; i++) {
-        this.lines.push(new EditorLineView(lines.at(i)));
+    for (var i = 0; i < content.getLines(); i++) {
+        this.lines.push(new EditorLineView(content.lines[i]));
     }
     this.addElementsToContents();
 };
@@ -192,16 +192,18 @@ EditorView.prototype.updateSelection = function(selection) {
         return;
 
     this.selection = [];
+    var startOffset = this.getOffset(selection.start);
+    var endOffset = this.getOffset(selection.end);
     if (selection.start.line == selection.end.line) {
         this.createSelectionDiv(
-            selection.start.offset,
+            startOffset,
             selection.start.line * this.lineHeight,
-            selection.end.offset - selection.start.offset);
+            endOffset - startOffset);
     } else {
         this.createSelectionDiv(
-            selection.start.offset,
+            startOffset,
             selection.start.line * this.lineHeight,
-            this.contentArea.offsetWidth - selection.start.offset);
+            this.contentArea.offsetWidth - startOffset);
         for (var i = selection.start.line + 1;
              i < selection.end.line; i++) {
             this.createSelectionDiv(
@@ -210,7 +212,7 @@ EditorView.prototype.updateSelection = function(selection) {
         }
         this.createSelectionDiv(
             0, selection.end.line * this.lineHeight,
-            selection.end.offset);
+            endOffset);
     }
 };
 

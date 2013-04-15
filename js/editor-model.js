@@ -1,3 +1,4 @@
+// EditorModel manages the cursor position, selections, and so on.
 // TODO: parens should be defined in the mode.
 var ParenType = {
     PAREN_OPEN: 1,
@@ -19,26 +20,26 @@ function isParen(text) {
         return ParenType.PAREN_CLOSE;
 }
 
-function EditorModel(backend, mode) {
-    this.caretPosition = 0;
+function EditorModel(mode) {
     this.idealCaretOffset = null;
     this.selection = null;
     this.mode = mode;
     this.editingCount = 0;
-    this.lines = new Zipper(['']);
+    this.content = new Content();
+    this.location = new Location(this.content, 0, 0);
     this.askHighlight();
     // TODO: this has to be merged into the system clipboard.
     this.killring = [];
-    this.editHistory = new EditingHistory(backend);
+    this.editHistory = new EditingHistory();
     this.modeObservers = [];
 }
 
-EditorModel.prototype.setContents = function(lines) {
-    this.lines = new Zipper(lines);
+EditorModel.prototype.setContents = function(content) {
+    this.content = content;
+    this.location = new Location(this.content, 0, 0);
     this.askHighlight();
     if (this.view)
-        this.view.Reset(this.lines);
-    this.caretPosition = 0;
+        this.view.Reset(this.content);
 };
 
 EditorModel.prototype.addModeObserver = function(observer) {
@@ -63,33 +64,19 @@ EditorModel.prototype.onHighlighted = function(editingCount, range) {
         return;
 
     this.view.applyHighlight(range);
-}
+};
 
 EditorModel.prototype.askHighlight = function() {
     this.editingCount++;
-    var lines = [];
-    for (var i = 0; i < this.lines.length; i++) {
-        lines.push(this.lines.at(i));
-    }
-    this.mode.askHighlight(lines.join('\n') + '\n', this.editingCount,
-                           this.onHighlighted.bind(this));
-};
-
-EditorModel.prototype.getCaretLocation = function() {
-    return {line: this.lines.currentIndex(), position: this.caretPosition};
+    var mode = this.mode;
+    this.content.getFullText((function(text) {
+        this.mode.askHighlight(text, this.editingCount,
+                               this.onHighlighted.bind(this));
+    }).bind(this));
 };
 
 EditorModel.prototype.getCurrentElement = function() {
-    return this.view.getElement({line: this.lines.currentIndex(),
-                                position: this.caretPosition});
-};
-
-EditorModel.prototype.getLines = function() {
-    var lines = [];
-    for (var i = 0; i < this.lines.length; i++) {
-        lines.push(this.lines.at(i));
-    }
-    return lines;
+    return this.view.getElement(this.location);
 };
 
 EditorModel.prototype.getSelection = function() {
@@ -98,125 +85,77 @@ EditorModel.prototype.getSelection = function() {
 
     var e1 = this.selection.origin;
     var e2 = this.selection.current;
-    if (e2.line < e1.line || (e2.line == e1.line &&
-                              e2.position < e1.position)) {
+    if (e2.lessThan(e1)) {
         var tmp = e2;
         e2 = e1;
         e1 = tmp;
     }
-
-    e1.offset = this.view.getOffset({line: e1.line, position: e1.position});
-    e2.offset = this.view.getOffset({line: e2.line, position: e2.position});
     return {start: e1, end: e2};
 };
 
 EditorModel.prototype.getLineCount = function() {
-    return this.lines.length;  
+    return this.content.getLines();
 };
 
 EditorModel.prototype.maybeHighlightParens = function() {
     this.view.clearParenHighlight();
-    if (this.caretPosition == 0)
+    var parenInfo = this.content.getParenPairs(this.location, isParen);
+    if (parenInfo.start == null)
         return;
-    var line = this.lines.current();
-    var origin = {line: this.lines.currentIndex(),
-                  position: this.caretPosition - 1};
-    var paren = isParen(line.charAt(this.caretPosition - 1));
-    if (paren == null) {
-        paren = isParen(line.charAt(this.caretPosition));
-        if (paren == null)
-            return;
-        origin.position = this.caretPosition;
-    }
 
-    var orientation = (paren == ParenType.PAREN_OPEN) ? +1 : -1;
-    var target = {line: origin.line, position: origin.position};
-    var counter = 1;
-    while (true) {
-        target.position += orientation;
-        if (target.position < 0) {
-            target.line--;
-            line = this.lines.at(target.line);
-            if (line == null)
-                break;
-            target.position = line.length - 1;
-        } else if (target.position >= line.length) {
-            target.line++;
-            line = this.lines.at(target.line);
-            if (line == null)
-                break;
-            target.position = 0;
-        }
-        var targetParen = isParen(line.charAt(target.position));
-        if (targetParen != null) {
-            if (paren == targetParen)
-                counter++;
-            else
-                counter--;
-        }
-        if (counter == 0) {
-            this.view.highlightParen(origin);
-            this.view.highlightParen(target);
-            return;
-        }
+    if (parenInfo.end == null) {
+        this.view.highlightParen(parenInfo.start, 'warning');
+    } else {
+        this.view.highlightParen(parenInfo.start);
+        this.view.highlightParen(parenInfo.end);
     }
-    this.view.highlightParen(origin, 'warning');
 };
 
-EditorModel.prototype.moveCaret = function(newPosition) {
-    this.caretPosition = newPosition;
+EditorModel.prototype.moveCaret = function(newLocation) {
+    this.location.setLocation(newLocation);
     this.idealCaretOffset = null;
 };
 
 EditorModel.prototype.startMouseSelection = function(leftOffset, lines) {
-    if (lines < 0 || lines >= this.lines.length)
-        return;
-
     this.selection = {};
-    this.selection.origin = {
-        line: lines,
-        position: this.view.getPosition({line: lines, offset: leftOffset})
-    };
-    this.selection.current = {
-        line: lines,
-        position: this.view.getPosition({line: lines, offset: leftOffset})
-    };
+    this.selection.origin = new Location(
+        this.content,
+        lines,
+        this.view.getPosition({line: lines, offset: leftOffset})
+    );
+    this.selection.current = new Location(
+        this.content,
+        lines,
+        this.view.getPosition({line: lines, offset: leftOffset})
+    );
 };
 
 EditorModel.prototype.updateMouseSelection = function(leftOffset, lines) {
     if (lines < 0 || !this.selection)
         return;
-    lines = Math.min(Math.max(lines, 0), this.lines.length);
-    this.selection.current = {
-        line: lines,
-        position: this.view.getPosition({line: lines, offset: leftOffset})
-    };
-    this.lines.jumpTo(this.selection.current.line);
-    this.moveCaret(this.selection.current.position);
+    this.selection.current.setLine(lines);
+    this.selection.current.setPosition(
+        this.view.getPosition({line: lines, offset: leftOffset}));
+    this.moveCaret(this.selection.current);
 };
 
 EditorModel.prototype.endMouseSelection = function() {
     if (!this.selection)
         return;
 
-    if (this.selection.origin.line == this.selection.current.line &&
-        this.selection.origin.position == this.selection.current.position) {
+    if (this.selection.origin.equals(this.selection.current))
         this.selection = null;
-    }
 };
 
 EditorModel.prototype.moveToPosition = function(leftOffset, lines) {
-    if (lines < 0 || lines >= this.lines.length)
-        return;
-    this.lines.jumpTo(lines);
-    this.moveCaret(this.view.getPosition({line: lines, offset: leftOffset}));
+    this.moveCaret(new Location(this.content,
+                                lines,
+                                this.view.getPosition({line: lines, offset: leftOffset})));
 };
 
 EditorModel.prototype.moveBackward = function(select) {
     if (!select && this.selection) {
-        var s = this.getSelection();
-        this.lines.jumpTo(s.start.line);
-        this.caretPosition = s.start.position;
+        this.moveCaret(s.start);
         this.selection = null;
         return;
     }
@@ -224,13 +163,8 @@ EditorModel.prototype.moveBackward = function(select) {
     if (select)
         this.prepareSelection();
 
-    var line = this.lines.current();
-    if (this.caretPosition == 0) {
-        if (this.lines.backward())
-            this.moveCaret(this.lines.current().length);
-    } else {
-        this.moveCaret(this.caretPosition - 1);
-    }
+    this.location.moveChars(-1);
+    this.idealCaretOffset = null;
 
     if (select)
         this.postProcessSelection();
@@ -239,8 +173,7 @@ EditorModel.prototype.moveBackward = function(select) {
 EditorModel.prototype.moveForward = function(select) {
     if (!select && this.selection) {
         var s = this.getSelection();
-        this.lines.jumpTo(s.end.line);
-        this.caretPosition = s.end.position;
+        this.moveCaret(s.start);
         this.selection = null;
         return;
     }
@@ -248,13 +181,8 @@ EditorModel.prototype.moveForward = function(select) {
     if (select)
         this.prepareSelection();
 
-    var line = this.lines.current();
-    if (this.caretPosition == line.length) {
-        if (this.lines.forward())
-            this.moveCaret(0);
-    } else {
-        this.moveCaret(this.caretPosition + 1);
-    }
+    this.location.moveChars(1);
+    this.idealCaretOffset = null;
 
     if (select)
         this.postProcessSelection();
@@ -266,29 +194,33 @@ EditorModel.prototype.movePreviousWord = function(select) {
     else
         this.selection = null;
 
-    var content = this.lines.current().slice(0, this.caretPosition);
+    var content = this.content.getLine(this.location).slice(0, this.location.position);
     while (true) {
         var non_words = content.split(this.mode.pattern);
         if (non_words.length > 1) {
             content = content.slice(0, content.length - non_words[non_words.length - 1].length);
             break;
         }
-        if (!this.lines.backward()) {
-            this.moveCaret(0);
+        if (this.location.line == 0) {
+            this.location.setPosition(0);
+            this.idealCaretOffset = null;
             if (select)
                 this.postProcessSelection();
             return;
         }
 
-        this.caretPosition = this.lines.current().length;
-        content = this.lines.current();
+        this.location.line--;
+        this.location.position = this.content.getCharsInLine(this.location.line);
+        content = this.content.getLine(this.location);
     }
 
     var pattern_str = this.mode.pattern.toString();
     var lastMatcher = RegExp(pattern_str.slice(1, pattern_str.length - 1) + "$");
     var m = lastMatcher.exec(content);
-    if (m)
-        this.moveCaret(content.length - m[0].length);
+    if (m) {
+        this.location.setPosition(content.length - m[0].length);
+        this.idealCaretOffset = null;
+    }
 
     if (select)
         this.postProcessSelection();
@@ -300,22 +232,24 @@ EditorModel.prototype.moveNextWord = function(select) {
     else
         this.selection = null;
 
-    var content = this.lines.current().slice(this.caretPosition);
+    var content = this.content.getLine(this.location).slice(this.location.position);
     while (true) {
         var m = this.mode.pattern.exec(content);
         if (m) {
-            this.moveCaret(this.caretPosition + m.index + m[0].length);
+            this.location.moveChars(m.index + m[0].length);
             break;
+        }
+        if (this.location.line < this.content.getLines() - 1) {
+            this.location.line++;
+            this.location.position = 0;
+            content = this.content.getLine(this.location);
         } else {
-            if (this.lines.forward()) {
-                content = this.lines.current();
-                this.caretPosition = 0;
-            } else {
-                this.moveCaret(this.lines.current().length);
-                break;
-            }
+            this.setPosition(this.content.getCharsInLine(this.location.line));
+            break;
         }
     }
+
+    this.idealCaretOffset = null;
     if (select)
         this.postProcessSelection();
 };
@@ -327,16 +261,15 @@ EditorModel.prototype.movePreviousLine = function(select) {
         this.selection = null;
 
     if (this.idealCaretOffset == null) {
-        this.idealCaretOffset =
-            this.view.getOffset({line: this.lines.currentIndex(),
-                                 position: this.caretPosition});
+        this.idealCaretOffset = this.view.getOffset(this.location);
     }
-    if (this.lines.backward()) {
-        this.caretPosition =
-            this.view.getPosition({line: this.lines.currentIndex(),
-                                   offset: this.idealCaretOffset});
+    if (this.location.line > 0) {
+        this.location.line--;
+        this.location.setPosition(this.view.getPosition(
+            {line: this.location.line,
+             offset: this.idealCaretOffset}));
     } else {
-        this.caretPosition = 0;
+        this.location.position = 0;
         this.idealCaretOffset = null;
     }
 
@@ -351,16 +284,15 @@ EditorModel.prototype.moveNextLine = function(select) {
         this.selection = null;
 
     if (this.idealCaretOffset == null) {
-        this.idealCaretOffset =
-            this.view.getOffset({line: this.lines.currentIndex(),
-                                 position: this.caretPosition});
+        this.idealCaretOffset = this.view.getOffset(this.location);
     }
-    if (this.lines.forward()) {
-        this.caretPosition =
-            this.view.getPosition({line: this.lines.currentIndex(),
-                                   offset: this.idealCaretOffset});
+    if (this.location.line < this.content.getLines() - 1) {
+        this.location.line++;
+        this.location.setPosition(this.view.getPosition(
+            {line: this.location.line,
+             offset: this.idealCaretOffset}));
     } else {
-        this.caretPosition = this.lines.current().length;
+        this.setPosition(this.content.getCharsInLine(this.location.line));
         this.idealCaretOffset = null;
     }
 
@@ -376,19 +308,17 @@ EditorModel.prototype.movePreviousPage = function(select) {
 
     var visibleLines = this.view.getVisibleLines();
     var pageLines = visibleLines.end - visibleLines.start;
-    var currentIndex = this.lines.currentIndex();
-    var newIndex = Math.max(currentIndex - pageLines + 1, 0);
-    if (newIndex < currentIndex) {
+    var currentLine = this.location.line;
+    var newLine = Math.max(currentLine - pageLines + 1, 0);
+    if (newLine < currentLine) {
         if (this.idealCaretOffset == null)
-            this.idealCaretOffset =
-                this.view.getOffset({line: this.lines.currentIndex(),
-                                     position: this.caretPosition});
-        this.lines.jumpTo(newIndex);
-        this.caretPosition =
-            this.view.getPosition({line: this.lines.currentIndex(),
-                                   offset: this.idealCaretOffset});
+            this.idealCaretOffset = this.view.getOffset(this.location);
+        this.location.line = newLine;
+        this.location.setPosition(this.view.getPosition(
+            {line: this.location.line,
+             offset: this.idealCaretOffset}));
+        this.view.pageUp(pageLines - 1);
     }
-    this.view.pageUp(pageLines - 1);
 
     if (select)
         this.postProcessSelection();
@@ -402,98 +332,65 @@ EditorModel.prototype.moveNextPage = function(select) {
 
     var visibleLines = this.view.getVisibleLines();
     var pageLines = visibleLines.end - visibleLines.start;
-    var currentIndex = this.lines.currentIndex();
-    var newIndex =
-        Math.min(currentIndex + pageLines - 1, this.lines.length - pageLines);
-    if (newIndex > currentIndex) {
+    var currentLine = this.location.line;
+    var newLine = Math.min(currentLine + pageLines - 1,
+                           this.content.getLines() - pageLines);
+    if (newLine > currentLine) {
         if (this.idealCaretOffset == null)
-            this.idealCaretOffset =
-                this.view.getOffset({line: this.lines.currentIndex(),
-                                     position: this.caretPosition});
-        this.lines.jumpTo(newIndex);
-        this.caretPosition =
-            this.view.getPosition({line: this.lines.currentIndex(),
-                                   offset: this.idealCaretOffset});
+            this.idealCaretOffset = this.view.getOffset(this.location);
+        this.location.line = newLine;
+        this.location.setPosition(this.view.getPosition(
+            {line: this.location.line,
+             offset: this.idealCaretOffset}));
+        this.view.pageDown(pageLines - 1);
     }
-    this.view.pageDown(pageLines - 1);
 
     if (select)
         this.postProcessSelection();
 };
 
 EditorModel.prototype.moveToStartOfLine = function() {
-    this.moveCaret(0);
+    this.location.position = 0;
+    this.idealCaretOffset = null;
 };
 
 EditorModel.prototype.moveToEndOfLine = function() {
-    this.moveCaret(this.lines.current().length);
+    this.location.setPosition(this.content.getCharsInLine(this.location.line));
+    this.idealCaretOffset = null;
 };
 
 EditorModel.prototype.ensureCaretVisible = function(lines) {
-  // Do not modify the caret position when selecting.
-  if (this.selection)
-      return;
+    // Do not modify the caret position when selecting.
+    if (this.selection)
+        return;
 
-  var currentOffset =
-        this.view.getOffset({line: this.lines.currentIndex(),
-                             position: this.caretPosition});
-  var changed = false;
-  if (this.lines.currentIndex() < lines.start) {
-      this.lines.jumpTo(lines.start);
-      changed = true;
-  } else if (this.lines.currentIndex() > lines.end) {
-      this.lines.jumpTo(lines.end);
-      changed = true;
-  }
-  if (changed) {
-      if (this.idealCaretOffset == null)
-          this.idealCaretOffset = currentOffset;
-      this.caretPosition =
-          this.view.getPosition({line: this.lines.currentIndex(),
-                                 offset: this.idealCaretOffset});
-  }
+    var currentOffset = this.view.getOffset(this.location);
+    var changed = false;
+    var oldLine = this.location.line;
+    this.location.line = Math.min(Math.max(this.location.line, lines.start), lines.end);
+    if (this.location.line != oldLine) {
+        if (this.idealCaretOffset == null)
+            this.idealCaretOffset = currentOffset;
+        this.setPosition(this.view.getPosition(
+                             {line: this.location.line,
+                              offset: this.idealCaretOffset}));
+    }
 };
 
 EditorModel.prototype.prepareSelection = function() {
-    if (!this.selection) {
-        this.selection = {
-            origin: {
-                line: this.lines.currentIndex(),
-                position: this.caretPosition
-            }
-        };
-    }
+    if (!this.selection)
+        this.selection = { origin: this.location.copy() };
 };
 
 EditorModel.prototype.postProcessSelection = function() {
     if (!this.selection)
         return null;
-    this.selection.current = {
-        line: this.lines.currentIndex(),
-        position: this.caretPosition
-    };
+    this.selection.current = this.location.copy();
 };
 
 EditorModel.prototype.copyToClipboard = function() {
     var selection = this.getSelection();
-    if (selection.start.line == selection.end.line) {
-        this.killring.unshift(this.lines.current().slice(
-            selection.start.position, selection.end.position));
-    } else {
-        var selectedText = this.lines.at(
-            selection.start.line).slice(selection.start.position);
-        selectedText += '\n';
-        for (var i = selection.start.line + 1;
-             i < selection.end.line; i++) {
-            selectedText += this.lines.at(i);
-            selectedText += '\n';
-        }
-        if (selection.end.position > 0) {
-            selectedText += this.lines.at(
-                selection.end.line).slice(0, selection.end.position);
-        }
-        this.killring.unshift(selectedText);
-    }
+    this.killring.unshift(this.content.getTextInRange(selection.start, selection.end));
 };
 
 EditorModel.prototype.pasteFromClipboard = function() {
@@ -519,49 +416,8 @@ EditorModel.prototype.deleteSelection = function() {
 EditorModel.prototype.deleteRange = function(start, end) {
     this.view.deleteRange(start, end);
 
-    var deletedText;
-    this.lines.jumpTo(start.line);
-    if (start.line == end.line) {
-        var line = this.lines.current();
-        deletedText = line.slice(start.position, end.position);
-        this.lines.replace(line.slice(0, start.position) +
-                           line.slice(end.position));
-        this.caretPosition = start.position;
-    } else {
-        var deletedLines = [];
-        deletedLines.push(this.lines.current().slice(start.position));
-        if (start.position == 0) {
-            this.lines.remove();
-        } else {
-            this.lines.replace(
-                this.lines.current().slice(0, start.position));
-            this.lines.forward();
-        }
-        for (var i = start.line + 1; i < end.line; i++) {
-            deletedLines.push(this.lines.current());
-            this.lines.remove();
-        }
-        deletedLines.push(
-            this.lines.current().slice(0, end.position));
-        deletedText = deletedLines.join("\n");
-        var removed = false;
-        if (end.position > 0) {
-            if (end.position == this.lines.current().length) {
-                removed = this.lines.remove();
-            } else {
-                this.lines.replace(
-                    this.lines.current().slice(end.position));
-            }
-        }
-        this.lines.backward();
-        this.caretPosition = this.lines.current().length;
-        if (!removed) {
-            this.lines.replace(this.lines.current() + this.lines.next());
-            this.lines.forward();
-            this.lines.remove();
-            this.lines.backward();
-        }
-    }
+    var deletedText = this.content.deleteRange(start, end);
+    this.location = start.copy();
     this.askHighlight();
     return deletedText;
 };
@@ -572,40 +428,13 @@ EditorModel.prototype.deletePreviousChar = function() {
         return;
     }
 
-    var currentLoc = {
-        line: this.lines.currentIndex(),
-        position: this.caretPosition
-    };
-    var previousLoc = {
-        line: currentLoc.line,
-        position: currentLoc.position - 1
-    };
-    var line = this.lines.current();
-    var deletedChar;
-    if (this.caretPosition == 0) {
-        if (this.lines.previous() != null) {
-            previousLoc.line--;
-            previousLoc.position = this.lines.previous().length;
-            this.lines.remove();
-            this.lines.backward();
-            var curLine = this.lines.current();
-            this.moveCaret(curLine.length);
-            this.lines.replace(curLine + line);
-            deletedChar = "\n";
-        } else {
-            return;
-        }
-    } else {
-        deletedChar = this.lines.current().charAt(
-            this.caretPosition - 1);
-        this.lines.replace(line.slice(0, this.caretPosition - 1) +
-                           line.slice(this.caretPosition));
-        this.moveCaret(this.caretPosition - 1);
-    }
-    this.editHistory.push(
-        new EditingHistoryEntry(
-            'delete', deletedChar, previousLoc, currentLoc));
-    this.view.deleteRange(previousLoc, currentLoc);
+    var current = this.location.copy();
+    var previous = current.copy();
+    previous.moveChars(-1);
+    var deletedChar = this.content.deleteRange(previous, current);
+    this.location = previous.copy();
+    this.editHistory.push(new EditingHistoryEntry('delete', deletedChar, previous, current));
+    this.view.deleteRange(previous, current);
     this.askHighlight();
 };
 
@@ -615,38 +444,12 @@ EditorModel.prototype.deleteNextChar = function() {
         return;
     }
 
-    var currentLoc = {
-        line: this.lines.currentIndex(),
-        position: this.caretPosition
-    };
-    var nextLoc = {
-        line: currentLoc.line,
-        position: currentLoc.position + 1
-    };
-    var line = this.lines.current();
-    var deletedChar;
-    if (line.length == this.caretPosition) {
-        if (this.lines.next() != null) {
-            nextLoc.line++;
-            nextLoc.position = 0;
-            this.lines.forward();
-            var nextLine = this.lines.current();
-            this.lines.remove();
-            this.lines.backward();
-            this.lines.replace(line + nextLine);
-            deletedChar = "\n";
-        } else {
-            return;
-        }
-    } else {
-        deletedChar = this.lines.current().charAt(this.caretPosition);
-        this.lines.replace(line.slice(0, this.caretPosition) +
-                           line.slice(this.caretPosition + 1));
-    }
-    this.editHistory.push(
-        new EditingHistoryEntry(
-            'delete', deletedChar, currentLoc, nextLoc));
-    this.view.deleteRange(currentLoc, nextLoc);
+    var current = this.location.copy();
+    var next = this.location.copy();
+    next.moveChars(1);
+    var deletedChar = this.content.deleteRange(current, next);
+    this.editHistory.push(new EditingHistoryEntry('delete', deletedChar, current, next));
+    this.view.deleteRange(current, next);
     this.askHighlight();
 };
 
@@ -655,101 +458,42 @@ EditorModel.prototype.newLine = function() {
 };
 
 EditorModel.prototype.incrementIndent = function() {
-    var newIndent = (new Array(this.tabWidth + 1)).join(" ");
-    this.lines.replace(newIndent + this.lines.current());
-    this.view.insertText(newIndent, {line: this.lines.currentIndex(), position: 0});
-    var tabWidth = /^\s*/.exec(this.lines.current())[0].length;
-    this.moveCaret(tabWidth);
+    // TODO: move to mode.
+    this.insertText("  ");
+    var tabWidth = /^\s*/.exec(this.content.getLine(this.location))[0].length;
+    this.location.setPosition(tabWidth);
 };
 
 EditorModel.prototype.decrementIndent = function() {
-    var currentLine = this.lines.current();
+    // TODO: move to mode.
+    var currentLine = this.content.getLine(this.location);
     var tabWidth = /^\s*/.exec(currentLine)[0].length;
-    if (tabWidth == 0) {
+    if (tabWidth == 0)
         return;
-    } else {
-        var pos1, pos2;
-        var slicePoint;
-        if (tabWidth < this.tabWidth) {
-            pos1 = {line: this.lines.currentIndex(), position: 0};
-            pos2 = {line: this.lines.currentIndex(), position: tabWidth};
-            slicePoint = tabWidth;
-            tabWidth = 0;
-        } else {
-            pos1 = {line: this.lines.currentIndex(), position: 0};
-            pos2 = {line: this.lines.currentIndex(), position: this.tabWidth};
-            slicePoint = this.tabWidth;
-            tabWidth -= this.tabWidth;
-        }
-        this.lines.replace(
-            this.lines.current().slice(slicePoint));
-        this.view.deleteRange(pos1, pos2);
-        var deleted = (new Array(pos2 - pos1 + 1).join(" "));
-        this.editHistory.push(
-            new EditingHistoryEntry('delete', deleted, pos1, pos2));
-    }
-    this.moveCaret(tabWidth);
+    var location1 = this.location.copy();
+    location1.setPostion(tabWidth);
+    var location2 = location1.copy();
+    location2.setPosition(tabWidth - 2);
+    this.deleteRange(location2, location1);
+    this.location.setPosition(location2.position);
 };
 
 EditorModel.prototype.insertText = function(text) {
     if (this.selection)
         this.deleteSelection();
 
-    var loc = {line: this.lines.currentIndex(),
-               position: this.caretPosition};
-
+    var loc = this.location.copy();
     this.insertTextInternal(text);
-
-    var loc2 = {line: this.lines.currentIndex(),
-                position: this.caretPosition};
+    var loc2 = this.location.copy();
     this.editHistory.push(
         new EditingHistoryEntry('insert', text, loc, loc2));
 };
 
 EditorModel.prototype.insertTextInternal = function(text) {
-    var loc = {line: this.lines.currentIndex(),
-               position: this.caretPosition};
-    this.view.insertText(text, loc);
-
-    var lines = text.split("\n");
-    if (lines.length > 1) {
-        var trailing = this.lines.current().slice(this.caretPosition);
-        this.lines.replace(this.lines.current().slice(0, this.caretPosition) +
-                           lines[0]);
-        this.lines.forward(true);
-        var newLineIndex = this.lines.currentIndex();
-        for (var i = 1; i < lines.length - 1; i++) {
-            this.lines.insert(lines[i]);
-        }
-        this.lines.insert(lines[lines.length - 1] + trailing);
-        this.lines.backward();
-        var currentIndex = this.lines.currentIndex();
-
-        // Set the default indent.
-        var lastIndent = 0;
-        for (var i = 0; i < lines.length - 1; i++) {
-            var index = newLineIndex + i;
-            // set the default indent.
-            lastIndent = GetIndentAt(this.getLines(), index);
-            var line = this.lines.at(index);
-            var indent = /\s*/.exec(line)[0].length;
-            if (indent < lastIndent) {
-                this.lines.jumpTo(index);
-                var newIndent = (new Array(lastIndent - indent + 1)).join(" ");
-                this.lines.replace(newIndent + this.lines.current());
-                this.view.insertText(newIndent, {line: index, position: 0});
-            }
-        }
-
-        this.lines.jumpTo(currentIndex);
-        this.moveCaret(lines[lines.length - 1].length + lastIndent);
-    } else {
-        var line = this.lines.current();
-        this.lines.replace(
-            line.slice(0, this.caretPosition) + text + line.slice(this.caretPosition));
-        this.moveCaret(this.caretPosition + text.length);
-    }
-
+    this.view.insertText(text, this.location);
+    this.content.insertText(text, this.location);
+    this.location.moveChars(text.length);
+    // TODO: indentations.
     this.askHighlight();
 };
 
@@ -757,13 +501,13 @@ EditorModel.prototype.applyHistory = function(entry) {
     if (!entry)
         return;
     this.selection = null;
-    this.lines.jumpTo(entry.pos.line);
-    this.moveCaret(entry.pos.position);
-    if (entry.type == 'insert') {
+    this.location.line = entry.pos.line;
+    this.location.setPosition(entry.pos.position);
+    this.idealCaretOffset = null;
+    if (entry.type == 'insert')
         this.insertText(entry.content);
-    } else {
+    else
         this.deleteRange(entry.pos, entry.pos2);
-    }
 };
 
 EditorModel.prototype.undo = function() {
@@ -773,8 +517,6 @@ EditorModel.prototype.undo = function() {
 EditorModel.prototype.redo = function() {
     this.applyHistory(this.editHistory.redo());
 };
-
-EditorModel.prototype.tabWidth = 2;
 
 // TODO: GetIndentAt has to be a part of a mode.
 function GetIndentAt(lines, target) {

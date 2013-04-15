@@ -7,12 +7,10 @@ var modeHandler = new ModeHandler('../modes/');
 
 AppEditor = function(fileHandler) {
     this.fileHandler = fileHandler;
-    this.backend = new AppModelBackend(fileHandler);
-    this.model = new EditorModel(
-        this.backend, modeHandler.getMode(fileHandler.getName()));
+    this.model = new EditorModel(modeHandler.getMode(fileHandler.getName()));
     this.controller = new EditorController(this.model);
     fileHandler.addBuffer(this);
-    this.backend.updateIndicator();
+    this.fileHandler.updateIndicator();
     // TODO: allow multiple editors in a window.
     this.id = window.editorWindowId;
     this.metadata = new MetadataManager(this.controller, this.model);
@@ -27,7 +25,7 @@ AppEditor.prototype.onFileLoaded = function(fileHandler) {
 };
 
 AppEditor.prototype.syncFileHandler = function() {
-    this.backend.updateFileHandler(this.fileHandler);
+    this.fileHandler.updateIndicator();
     this.model.setMode(modeHandler.getMode(this.fileHandler.getName()));
     this.controller.onFileLoaded(this.fileHandler);
     updateFileList();
@@ -40,7 +38,7 @@ AppEditor.prototype.onModeLoaded = function(newMode) {
 AppEditor.prototype.saveFile = function(fileEntry) {
     this.fileHandler.saveToEntry(fileEntry, (function() {
         this.model.setMode(modeHandler.getMode(fileHandler.getName()));
-        this.backend.updateIndicator();
+        this.fileHandler.updateIndicator();
     }).bind(this));
 };
 

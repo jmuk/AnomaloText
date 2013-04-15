@@ -15,11 +15,9 @@ function loadFile(filename, callback) {
 }
 
 function onFileLoaded(filename, contents) {
-    var model = new EditorModel(
-	new ModelBackend(), modeHandler.getMode(filename));
-    var lines = contents.split('\n');
+    var model = new EditorModel(modeHandler.getMode(filename));
     editors.push(new EditorController(model));
-    model.setContents(lines);
+    model.setContents(new Content(contents));
 }
 
 function windowOnLoad() {

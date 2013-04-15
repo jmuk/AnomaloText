@@ -22,21 +22,34 @@ Mode.prototype.messageHandler = function(e) {
             window.onModeLoaded(this);
     } else if (e.data.command == 'highlight') {
         var callback = this.callbacks[e.data.callback_id];
-        if (callback) {
+        if (callback)
             callback(e.data.id, e.data.range);
-        }
+    } else if (e.data.command == 'indent') {
+        var callback = this.callbacks[e.data.callback_id];
+        if (callback)
+            callback(e.data.id, e.data.indents);
     }
 };
 
-Mode.prototype.askHighlight = function(contents, request_id, callback) {
+Mode.prototype.postMessage = function(message, callback) {
     if (!this.worker)
         return;
 
     this.callbacks[this.callback_id] = callback;
-    this.worker.postMessage(
-        {command:'highlight', id: request_id,
-         callback_id: this.callback_id, contents: contents});
+    message.callback_id = this.callback_id;
+    this.worker.postMessage(message);
     this.callback_id++;
+};
+
+Mode.prototype.askHighlight = function(contents, request_id, callback) {
+    this.postMessage(
+        {command:'highlight', id: request_id, contents: contents}, callback);
+};
+
+Mode.prototype.indentFor = function(lines, start, end, request_id, callback) {
+    this.postMessage(
+        {command:'indent', id: request_id, lines: lines, start: start, end: end},
+        callback);
 };
 
 function ModeHandler(basePath) {
