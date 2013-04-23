@@ -7,12 +7,12 @@ FileHandler = function() {
     this.fileEntry = null;
     this.onWriting = false;
     this.content = new Content();
-    this.buffers = {};
+    this.content.observers.push(this);
     this.id = fileHandlerIds++;
 
     this.edited = false;
     this.lastEdited = 0;
-    this.updateIndicator();
+    this.observers = new Observers();
 };
 
 FileHandler.prototype.getName = function() {
@@ -31,14 +31,6 @@ FileHandler.prototype.empty = function() {
     return false;
 };
 
-FileHandler.prototype.addBuffer = function(buffer) {
-    this.buffers[buffer.id] = buffer;
-};
-
-FileHandler.prototype.detachBuffer = function(buffer) {
-    delete this.buffers[buffer.id];
-};
-
 FileHandler.prototype.setFileEntry = function(fileEntry) {
     this.fileEntry = fileEntry;
     var fileHandler = this;
@@ -51,10 +43,7 @@ FileHandler.prototype.setFileEntry = function(fileEntry) {
             if (reader.readyState != FileReader.DONE)
                 return;
             fileHandler.content.lines = reader.result.split('\n');
-            for (var id in fileHandler.buffers) {
-                var buffer = fileHandler.buffers[id];
-                buffer.onFileLoaded.bind(buffer)(fileHandler);
-            }
+            fileHandler.observers.notify('onFileLoaded', [fileHandler]);
         };
         reader.readAsText(file, 'utf-8');
     });
@@ -92,7 +81,7 @@ FileHandler.prototype.save = function(callback) {
         };
 
         fileHandler.content.getFullText(function(text) {
-            writer.write(new Blob(text, {type: 'text/plain'})); });
+            writer.write(new Blob([text], {type: 'text/plain'})); });
     });
 };
 
@@ -108,22 +97,16 @@ FileHandler.prototype.maybeSave = function(lastEdited) {
 
     this.save((function(succeeded) {
         this.edited = false;
+        this.observers.notify('onEditChanged');
         this.updateIndicator();
     }).bind(this));
-};
-
-FileHandler.prototype.updateIndicator = function() {
-    var fileName = this.fileHandler.getName();
-    if (this.edited)
-        fileName += '*';
-    document.getElementById('indicator').textContent = fileName;
 };
 
 FileHandler.prototype.onContentChanged = function(content) {
     var lastEdited = (new Date()).getTime();
     this.lastEdited = lastEdited;
     this.edited = true;
-    this.updateIndicator();
+    this.observers.notify('onEditChanged');
     window.setTimeout((function() { this.maybeSave(lastEdited); }).bind(this),
                       500 /* msec */);
 };

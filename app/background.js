@@ -33,18 +33,18 @@ function switchBufferTo(editor, fileHandlerId) {
         return;
     }
 
-    editor.fileHandler.detachBuffer(editor);
-    fileHandler.addBuffer(editor);
+    editor.fileHandler.observers.remove(editor);
+    fileHandler.observers.push(editor);
     editor.onFileLoaded(fileHandler);
 };
 
 function openNewFile(fileEntry, editor) {
-    editor.fileHandler.detachBuffer(editor);
+    editor.fileHandler.observers.remove(editor);
     for (var k in fileHandlers) {
         var fileHandler = fileHandlers[k];
         if (fileHandler.fileEntry &&
             fileEntry.fullPath == fileHandler.fileEntry.fullPath) {
-            fileHandler.addBuffer(editor);
+            fileHandler.observers.push(editor);
             fileHandler.setFileEntry(fileEntry);
             return;
         }
@@ -52,7 +52,7 @@ function openNewFile(fileEntry, editor) {
 
     var fileHandler = new FileHandler();
     fileHandlers[fileHandler.id] = fileHandler;
-    fileHandler.addBuffer(editor);
+    fileHandler.observers.push(editor);
     fileHandler.setFileEntry(fileEntry);
 };
 

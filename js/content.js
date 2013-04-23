@@ -7,10 +7,6 @@ function Content(text) {
     this.observers = new Observers();
 };
 
-Content.prototype.addObserver = function(obs) {
-    this.observers.push(obs);
-};
-
 Content.prototype.notifyChange = function() {
     this.observers.notify('onContentChanged', [this]);
 };

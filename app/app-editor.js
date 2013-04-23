@@ -6,11 +6,12 @@ var AppEditor;
 var modeHandler = new ModeHandler('../modes/');
 
 AppEditor = function(fileHandler) {
+    console.log(document.getElementById('indicator'));
     this.fileHandler = fileHandler;
     this.model = new EditorModel(modeHandler.getMode(fileHandler.getName()));
     this.controller = new EditorController(this.model);
-    fileHandler.addBuffer(this);
-    this.fileHandler.updateIndicator();
+    fileHandler.observers.push(this);
+    this.updateIndicator();
     // TODO: allow multiple editors in a window.
     this.id = window.editorWindowId;
     this.metadata = new MetadataManager(this.controller, this.model);
@@ -20,12 +21,15 @@ AppEditor = function(fileHandler) {
 };
 
 AppEditor.prototype.onFileLoaded = function(fileHandler) {
+    if (this.fileHandler)
+        this.fileHandler.observers.remove(this);
     this.fileHandler = fileHandler;
+    this.fileHandler.observers.push(this);
     this.syncFileHandler();
 };
 
 AppEditor.prototype.syncFileHandler = function() {
-    this.fileHandler.updateIndicator();
+    this.updateIndicator();
     this.model.setMode(modeHandler.getMode(this.fileHandler.getName()));
     this.controller.onFileLoaded(this.fileHandler);
     updateFileList();
@@ -38,7 +42,7 @@ AppEditor.prototype.onModeLoaded = function(newMode) {
 AppEditor.prototype.saveFile = function(fileEntry) {
     this.fileHandler.saveToEntry(fileEntry, (function() {
         this.model.setMode(modeHandler.getMode(fileHandler.getName()));
-        this.fileHandler.updateIndicator();
+        this.updateIndicator();
     }).bind(this));
 };
 
@@ -53,6 +57,17 @@ AppEditor.prototype.openFile = function(fileEntry) {
             bgPage.openNewFile(fileEntry, editor);
         });
     }
+};
+
+AppEditor.prototype.onEditChanged = function() {
+    this.updateIndicator();
+}
+
+AppEditor.prototype.updateIndicator = function() {
+    var fileName = this.fileHandler.getName();
+    if (this.fileHandler.edited)
+        fileName += '*';
+    document.getElementById('indicator').textContent = fileName;
 };
 
 })()

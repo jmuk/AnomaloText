@@ -85,7 +85,9 @@ EditorModel.prototype.getSelection = function() {
 
     var e1 = this.selection.origin;
     var e2 = this.selection.current;
-    if (e2.lessThan(e1)) {
+    if (e1.equals(e2)) {
+        return null;
+    } else if (e2.lessThan(e1)) {
         var tmp = e2;
         e2 = e1;
         e1 = tmp;
@@ -118,6 +120,7 @@ EditorModel.prototype.moveCaret = function(newLocation) {
 
 EditorModel.prototype.startMouseSelection = function(leftOffset, lines) {
     this.selection = {};
+    lines = Math.max(Math.min(this.content.getLines() - 1, lines), 0);
     this.selection.origin = new Location(
         this.content,
         lines,
@@ -133,6 +136,7 @@ EditorModel.prototype.startMouseSelection = function(leftOffset, lines) {
 EditorModel.prototype.updateMouseSelection = function(leftOffset, lines) {
     if (lines < 0 || !this.selection)
         return;
+    lines = Math.min(this.content.getLines() - 1, lines);
     this.selection.current.setLine(lines);
     this.selection.current.setPosition(
         this.view.getPosition({line: lines, offset: leftOffset}));
@@ -148,9 +152,11 @@ EditorModel.prototype.endMouseSelection = function() {
 };
 
 EditorModel.prototype.moveToPosition = function(leftOffset, lines) {
-    this.moveCaret(new Location(this.content,
-                                lines,
-                                this.view.getPosition({line: lines, offset: leftOffset})));
+    lines = Math.max(Math.min(this.content.getLines() - 1, lines), 0);
+    this.moveCaret(
+        new Location(this.content,
+                     lines,
+                     this.view.getPosition({line: lines, offset: leftOffset})));
 };
 
 EditorModel.prototype.moveBackward = function(select) {
@@ -171,7 +177,7 @@ EditorModel.prototype.moveBackward = function(select) {
 };
 
 EditorModel.prototype.moveForward = function(select) {
-    if (!select && this.selection) {
+    if (!select && this.getSelection()) {
         var s = this.getSelection();
         this.moveCaret(s.start);
         this.selection = null;
@@ -390,7 +396,11 @@ EditorModel.prototype.postProcessSelection = function() {
 
 EditorModel.prototype.copyToClipboard = function() {
     var selection = this.getSelection();
-    this.killring.unshift(this.content.getTextInRange(selection.start, selection.end));
+    if (!selection)
+        return;
+
+    this.killring.unshift(this.content.getTextInRange(
+                              selection.start, selection.end));
 };
 
 EditorModel.prototype.pasteFromClipboard = function() {

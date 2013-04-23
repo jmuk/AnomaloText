@@ -71,7 +71,7 @@ EditorView.prototype.updateHeight = function() {
 };
 
 EditorView.prototype.getPosition = function(loc) {
-  return this.lines[loc.line].getPosition(loc.offset);
+    return this.lines[loc.line].getPosition(loc.offset);
 };
 
 EditorView.prototype.getOffset = function(loc) {

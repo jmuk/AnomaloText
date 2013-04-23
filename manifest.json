@@ -3,7 +3,7 @@
   "description": "A text editor working as a ChromeApps",
   "version": "0.1",
   "app": {
-    "background": {"scripts": ["app/file-handler.js", "app/background.js"]}
+    "background": {"scripts": ["js/observers.js", "js/content.js", "app/file-handler.js", "app/background.js"]}
   },
   "icons": {"16": "img/anomalocaris-16.png", "128": "img/anomalocaris-128.png"},
   "permissions": ["fileSystem", "fileSystem.write"]
