@@ -6,8 +6,8 @@ var AppEditor;
 var modeHandler = new ModeHandler('../modes/');
 
 AppEditor = function(fileHandler) {
-    console.log(document.getElementById('indicator'));
     this.fileHandler = fileHandler;
+    this.editId = fileHandler.editId;
     this.model = new EditorModel(modeHandler.getMode(fileHandler.getName()));
     this.controller = new EditorController(this.model);
     fileHandler.observers.push(this);
@@ -28,10 +28,15 @@ AppEditor.prototype.onFileLoaded = function(fileHandler) {
     this.syncFileHandler();
 };
 
+AppEditor.prototype.recordFileEditId = function() {
+    this.editId = this.fileHandler.editId;
+};
+
 AppEditor.prototype.syncFileHandler = function() {
     this.updateIndicator();
     this.model.setMode(modeHandler.getMode(this.fileHandler.getName()));
-    this.controller.onFileLoaded(this.fileHandler);
+    if (this.editId != this.fileHandler.editId)
+        this.controller.onFileLoaded(this.fileHandler);
     updateFileList();
 };
 

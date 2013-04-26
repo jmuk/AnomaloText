@@ -11,6 +11,7 @@ FileHandler = function() {
     this.id = fileHandlerIds++;
 
     this.edited = false;
+    this.editId = 0;
     this.lastEdited = 0;
     this.observers = new Observers();
 };
@@ -43,6 +44,7 @@ FileHandler.prototype.setFileEntry = function(fileEntry) {
             if (reader.readyState != FileReader.DONE)
                 return;
             fileHandler.content.lines = reader.result.split('\n');
+            fileHandler.editId++;
             fileHandler.observers.notify('onFileLoaded', [fileHandler]);
         };
         reader.readAsText(file, 'utf-8');
@@ -67,6 +69,7 @@ FileHandler.prototype.save = function(callback) {
     this.fileEntry.createWriter(function(writer) {
         function onTruncateEnd() {
             fileHandler.onWriting = false;
+            fileHandler.editId++;
             callback(true);
         }
         fileHandler.onWriting = true;

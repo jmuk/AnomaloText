@@ -23,11 +23,17 @@ function windowOnLoad() {
     });
 }
 
+function windowOnBlur() {
+    if (editor)
+        editor.recordFileEditId();
+}
+
 function windowOnFocus() {
     if (editor)
         editor.syncFileHandler();
 }
 
 window.addEventListener('load', windowOnLoad);
+window.addEventListener('blur', windowOnBlur);
 window.addEventListener('focus', windowOnFocus);
 })();
