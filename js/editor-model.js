@@ -161,7 +161,7 @@ EditorModel.prototype.moveToPosition = function(leftOffset, lines) {
 
 EditorModel.prototype.moveBackward = function(select) {
     if (!select && this.selection) {
-        this.moveCaret(s.start);
+        this.moveCaret(this.getSelection().start);
         this.selection = null;
         return;
     }
@@ -298,7 +298,7 @@ EditorModel.prototype.moveNextLine = function(select) {
             {line: this.location.line,
              offset: this.idealCaretOffset}));
     } else {
-        this.setPosition(this.content.getCharsInLine(this.location.line));
+        this.location.setPosition(this.content.getCharsInLine(this.location.line));
         this.idealCaretOffset = null;
     }
 
@@ -377,9 +377,9 @@ EditorModel.prototype.ensureCaretVisible = function(lines) {
     if (this.location.line != oldLine) {
         if (this.idealCaretOffset == null)
             this.idealCaretOffset = currentOffset;
-        this.setPosition(this.view.getPosition(
-                             {line: this.location.line,
-                              offset: this.idealCaretOffset}));
+        this.location.setPosition(this.view.getPosition(
+                                      {line: this.location.line,
+                                       offset: this.idealCaretOffset}));
     }
 };
 
