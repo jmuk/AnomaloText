@@ -59,7 +59,8 @@ function ModeHandler(basePath) {
 }
 
 ModeHandler.prototype.modeRules = [
-  {pattern: /\.py$/, mode: 'python-mode.js'}
+  {pattern: /\.py$/, mode: 'python-mode.js'},
+  {pattern: /\.js$/, mode: 'javascript-mode.js'}
 ];
 
 ModeHandler.prototype.getMode = function(filename) {
