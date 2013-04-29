@@ -67,15 +67,16 @@ FileHandler.prototype.save = function(callback) {
 
     var fileHandler = this;
     this.fileEntry.createWriter(function(writer) {
-        function onTruncateEnd() {
+        function onSaved() {
             fileHandler.onWriting = false;
             fileHandler.editId++;
             callback(true);
         }
         fileHandler.onWriting = true;
         writer.onwriteend = function() {
-            writer.onwriteend = onTruncateEnd();
-            writer.truncate(writer.position);
+            writer.onwriteend = onSaved();
+            fileHandler.content.getFullText(function(text) {
+                writer.write(new Blob([text], {type: 'text/plain'})); });
         };
         writer.onerror = function() {
             console.log('error happens during saving');
@@ -83,8 +84,7 @@ FileHandler.prototype.save = function(callback) {
             callback(false);
         };
 
-        fileHandler.content.getFullText(function(text) {
-            writer.write(new Blob([text], {type: 'text/plain'})); });
+        writer.truncate(0);
     });
 };
 
