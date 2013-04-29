@@ -101,7 +101,6 @@ FileHandler.prototype.maybeSave = function(lastEdited) {
     this.save((function(succeeded) {
         this.edited = false;
         this.observers.notify('onEditChanged');
-        this.updateIndicator();
     }).bind(this));
 };
 

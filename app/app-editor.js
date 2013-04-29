@@ -21,6 +21,8 @@ AppEditor = function(fileHandler) {
 };
 
 AppEditor.prototype.onFileLoaded = function(fileHandler) {
+    if (this.fileHandler != fileHandler)
+        this.editId = null;
     if (this.fileHandler)
         this.fileHandler.observers.remove(this);
     this.fileHandler = fileHandler;
