@@ -131,18 +131,13 @@ EditorController.prototype.keydown = function(ev) {
     this.updateCaretIndicator();
     if (consumed)
         ev.preventDefault();
+    this.receiver.textContent = '';
     return !consumed;
 };
 
 // Clear status of focus and enforce it to the edit field.
 EditorController.prototype.enforceFocus = function() {
     this.receiver.focus();
-    var caretRange = document.createRange();
-    caretRange.setStart(this.receiver, 0);
-    caretRange.setEnd(this.receiver, 0);
-    var selection = window.getSelection();
-    selection.removeAllRanges();
-    selection.addRange(caretRange);
 };
 
 EditorController.prototype.getLocationInContentArea = function(ev) {
