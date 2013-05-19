@@ -1,36 +1,8 @@
-function BuildUnionRegexp(words) {
-    escaped_words = [];
-    for (var i = 0; i < words.length; i++) {
-        escaped_words.push(
-            words[i].replace(/([.*+?^=!:${}()|[\]\/\\])/g, "\\$1"));
-    }
-    return new RegExp('^(' + escaped_words.join('|') + ')\\b');
-}
+importScripts('mode-utils.js');
 
-function splitToTokens(contents) {
-    var symbols = ['"""', "'''", '**', '//', '<<', '>>', '<=', '>=', '==',
-                   '!=', '<>', '+=', '-=', '*=', '/=', '//=', '%=', '&=',
-                   '|=', '^=', '>>=', '<<=', '**='];
-    var matchers = [
-        /^\s/,
-        BuildUnionRegexp(symbols),
-        /^[a-zA-Z_0-9]+/
-    ];
-    var result = [];
-    while (contents.length > 0) {
-        var length = 1;
-        for (var i = 0; i < matchers.length; ++i) {
-            var m = contents.match(matchers[i]);
-            if (m) {
-                length = m[0].length;
-                break;
-            }
-        }
-        result.push(contents.slice(0, length));
-        contents = contents.slice(length);
-    }
-    return result;
-}
+var symbols = ['"""', "'''", '**', '//', '<<', '>>', '<=', '>=', '==',
+               '!=', '<>', '+=', '-=', '*=', '/=', '//=', '%=', '&=',
+               '|=', '^=', '>>=', '<<=', '**='];
 
 var keywords = [
   'and', 'del', 'for', 'is', 'raise',
@@ -51,8 +23,8 @@ var defaultMode = [
     {pattern:'"', type:'string', mode:'dquote'},
     {pattern:'@', type:'keyword', mode:'keyword'},
     {pattern:/(def|class)/, type:'reserved', mode:'declaration'},
-    {pattern:BuildUnionRegexp(keywords), type:'reserved'},
-    {pattern:BuildUnionRegexp(specialTerms), type:'keyword'}
+    {pattern:modeUtils.BuildUnionRegexp(keywords), type:'reserved'},
+    {pattern:modeUtils.BuildUnionRegexp(specialTerms), type:'keyword'}
 ];
 
 var commentMode = [
@@ -72,77 +44,16 @@ var declarationMode = [
     {pattern:/./, mode:'default'}
 ];
 
-function buildStringPattern(endPattern, multiLine) {
-    var result = [];
-    if (!multiLine) {
-        result.push({pattern:'\n', mode:'default'});
-    }
-    result.push({pattern:endPattern, type:'string', mode:'default'});
-    result.push({pattern:/./, type:'string'});
-    return result;
-}
-
 var modes = {
     default: defaultMode,
     comment: commentMode,
-    quote: buildStringPattern("'", false),
-    dquote: buildStringPattern('"', false),
-    triquote: buildStringPattern("'''", true),
-    tridquote: buildStringPattern('"""', true),
+    quote: modeUtils.buildStringPattern("'", false),
+    dquote: modeUtils.buildStringPattern('"', false),
+    triquote: modeUtils.buildStringPattern("'''", true),
+    tridquote: modeUtils.buildStringPattern('"""', true),
     keyword: keywordMode,
     declaration: declarationMode
 };
-
-function parseContents(contents) {
-    var tokens = splitToTokens(contents);
-    var offset = 0;
-    var modeName = 'default';
-    var currentRange = null;
-    var result = [];
-    for (var i = 0; i < tokens.length; i++) {
-        var mode = modes[modeName];
-        var token = tokens[i];
-        var patternFound = false;
-        for (var j = 0; j < mode.length; j++) {
-            var pattern = mode[j].pattern;
-            if ((typeof(pattern) == 'string' && pattern == token) ||
-                token.match(pattern)) {
-                patternFound = true;
-                var type = mode[j].type;
-                if (type) {
-                    if (currentRange && currentRange.type == type) {
-                        currentRange.end = offset + token.length;
-                    } else {
-                        if (currentRange)
-                            result.push(currentRange);
-                        currentRange = {
-                            start: offset,
-                            end: offset + token.length,
-                            type: type
-                        };
-                    }
-                } else if (currentRange) {
-                    result.push(currentRange);
-                    currentRange = null;
-                }
-                if (mode[j].mode)
-                    modeName = mode[j].mode;
-                break;
-            }
-        }
-        if (!patternFound && currentRange) {
-            result.push(currentRange);
-            currentRange = null;
-        }
-        offset += token.length;
-    }
-    if (currentRange)
-        result.push(currentRange);
-    for (var i = 0; i < result.length; i++) {
-        result[i].text = contents.slice(result[i].start, result[i].end);
-    }
-    return result;
-}
 
 function messageHandler(data) {
     var result;
@@ -153,7 +64,7 @@ function messageHandler(data) {
                   parens: '[{()}]'};
     } else if (data.command == 'highlight') {
         result = {id: data.id, callback_id: data.callback_id,
-		  range: parseContents(data.contents)};
+		  range: modeUtils.parseContents(data.contents, modes, symbols)};
     }
     result.command = data.command;
     self.postMessage(result);
