@@ -43,6 +43,7 @@ var modeUtils = {
     buildStringPattern: function(endPattern) {
         var result = [];
         result.push({pattern:endPattern, type:'string', mode:'default'});
+        result.push({pattern:/\\./, type:'string'});
         result.push({pattern:/./, type:'string'});
         return result;
     },
