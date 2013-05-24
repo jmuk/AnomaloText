@@ -96,5 +96,35 @@ var modeUtils = {
             result[i].text = contents.slice(result[i].start, result[i].end);
         }
         return result;
+    },
+
+    getPreviousTerm: function(lines, target, openParens, closeParens, binaryOperators) {
+        var counter = 0;
+        var index = target - 1;
+        while (index > 0) {
+            var line = lines[index];
+            for (var i = line.length - 1; i >= 0; i--) {
+                if (openParens.indexOf(line[i]) >= 0) {
+                    counter--;
+                    if (counter < 0)
+                        return {line:index, position: i + 1};
+                    counter = Math.max(counter - 1, 0);
+                } else if (closeParens.indexOf(line[i]) >= 0) {
+                    counter++;
+                }
+            }
+            if (counter == 0 && !line.match(/^\s+$/)) {
+                var prevLine = lines[index - 1].replace(/\s*$/, "");
+                if (binaryOperators.indexOf(prevLine[prevLine.length - 1]) < 0)
+                    return {line:index, position: 0};
+            }
+            index--;
+        }
+        return {line:0, position: 0};
+    },
+
+    getIndentForLine: function(line) {
+        // needs to check the horizontal tab. 
+        return line.match(/^\s*/)[0].length;
     }
 };

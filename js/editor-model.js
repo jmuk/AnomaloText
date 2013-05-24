@@ -24,7 +24,7 @@ function EditorModel(mode) {
     this.idealCaretOffset = null;
     this.selection = null;
     this.mode = mode;
-    this.editingCount = 0;
+    this.editingId = {count: 0, lineEditCount: 0};
     this.content = new Content();
     this.location = new Location(this.content, 0, 0);
     this.askHighlight();
@@ -57,22 +57,43 @@ EditorModel.prototype.setMode = function(mode) {
         this.modeObservers[i].onModeChanged(mode);
 };
 
-EditorModel.prototype.onHighlighted = function(editingCount, range) {
+EditorModel.prototype.onHighlighted = function(editingId, range) {
     if (!this.view)
         return;
-    if (this.editingCount != editingCount)
+    if (this.editingId.count != editingId.count)
         return;
 
     this.view.applyHighlight(range);
 };
 
 EditorModel.prototype.askHighlight = function() {
-    this.editingCount++;
-    var mode = this.mode;
+    this.editingId.count++;
     this.content.getFullText((function(text) {
-        this.mode.askHighlight(text, this.editingCount,
+        this.mode.askHighlight(text, this.editingId,
                                this.onHighlighted.bind(this));
     }).bind(this));
+};
+
+EditorModel.prototype.onIndent = function(editingId, target, indent) {
+    if (this.editingId.lineEditCount != editingId.lineEditCount)
+        return;
+
+    var line = this.content.getLine({line: target});
+    // TODO: think about horizontal tabs
+    var currentIndent = line.match(/^\s*/)[0].length;
+    if (indent > currentIndent) {
+        this.insertTextInternal(Array(indent - currentIndent + 1).join(' '));
+    } else if (indent < currentIndent){
+        this.deleteRange(
+            new Location(this.content, target, 0),
+            new Location(this.content, target, currentIndent - indent));
+    }
+};
+
+EditorModel.prototype.askIndent = function(line) {
+    this.mode.indentFor(
+        this.content.lines,
+        line, this.editingId, this.onIndent.bind(this));
 };
 
 EditorModel.prototype.getCurrentElement = function() {
@@ -407,7 +428,7 @@ EditorModel.prototype.pasteFromClipboard = function() {
     if (this.killring.length == 0)
         return;
 
-    this.insertText(this.killring[0]);
+    this.insertTextInternal(this.killring[0]);
 };
 
 EditorModel.prototype.deleteSelection = function() {
@@ -428,6 +449,8 @@ EditorModel.prototype.deleteRange = function(start, end) {
 
     var deletedText = this.content.deleteRange(start, end);
     this.location = start.copy();
+    if (start.line != end.line)
+        this.editingId.lineEditCount++; 
     this.askHighlight();
     return deletedText;
 };
@@ -445,6 +468,8 @@ EditorModel.prototype.deletePreviousChar = function() {
     this.location = previous.copy();
     this.editHistory.push(new EditingHistoryEntry('delete', deletedChar, previous, current));
     this.view.deleteRange(previous, current);
+    if (current.line != previous.line)
+        this.editingId.lineEditCount++; 
     this.askHighlight();
 };
 
@@ -460,6 +485,8 @@ EditorModel.prototype.deleteNextChar = function() {
     var deletedChar = this.content.deleteRange(current, next);
     this.editHistory.push(new EditingHistoryEntry('delete', deletedChar, current, next));
     this.view.deleteRange(current, next);
+    if (current.line != next.line)
+        this.editingId.lineEditCount++; 
     this.askHighlight();
 };
 
@@ -469,7 +496,7 @@ EditorModel.prototype.newLine = function() {
 
 EditorModel.prototype.incrementIndent = function() {
     // TODO: move to mode.
-    this.insertText("  ");
+    this.insertTextInternal('  ');
     var tabWidth = /^\s*/.exec(this.content.getLine(this.location))[0].length;
     this.location.setPosition(tabWidth);
 };
@@ -497,13 +524,16 @@ EditorModel.prototype.insertText = function(text) {
     var loc2 = this.location.copy();
     this.editHistory.push(
         new EditingHistoryEntry('insert', text, loc, loc2));
+    if (text.indexOf("\n") >= 0)
+        this.askIndent(this.location.line);
 };
 
 EditorModel.prototype.insertTextInternal = function(text) {
     this.view.insertText(text, this.location);
     this.content.insertText(text, this.location);
     this.location.moveChars(text.length);
-    // TODO: indentations.
+    if (text.indexOf("\n") >= 0)
+        this.editingId.lineEditCount++;
     this.askHighlight();
 };
 
@@ -515,7 +545,7 @@ EditorModel.prototype.applyHistory = function(entry) {
     this.location.setPosition(entry.pos.position);
     this.idealCaretOffset = null;
     if (entry.type == 'insert')
-        this.insertText(entry.content);
+        this.insertTextInternal(entry.content);
     else
         this.deleteRange(entry.pos, entry.pos2);
 };

@@ -59,7 +59,10 @@ var functionArgsMode = [
     {pattern:/\)/, mode:'default'}
 ];
 
-var parens = '[{()}]';
+var openParens = '[{(';
+var closeParens = ')}]';
+var binaryOperators = '+-*/^&|';
+var tabWidth = 4;
 
 var modes = {
     default: defaultMode,
@@ -73,17 +76,81 @@ var modes = {
     varDecl: varMode
 };
 
+function getIndent(lines, target) {
+    var prevTermStart = modeUtils.getPreviousTerm(
+        lines, target, openParens, closeParens, binaryOperators);
+    if (lines[prevTermStart.line].length == prevTermStart.position) {
+        // previous line ends with open parens.
+        return modeUtils.getIndentForLine(
+            lines[prevTermStart.line]) + tabWidth;
+    }
+
+    var prevTermLine =
+        lines[prevTermStart.line].slice(prevTermStart.position);
+    var semicolonPos = prevTermLine.lastIndexOf(";");
+    if (semicolonPos >= 0)
+        prevTermLine = prevTermLine.slice(semicolonPos);
+
+    if (prevTermLine.match(/^\s*(if|while|for|function)/)) {
+        var parenConsumed = false;
+        var braceConsumed = false;
+        var stack = [];
+        function processLine(line) {
+            for (var i = 0; i < prevTermLine.length; ++i) {
+                if (line[i] == '(' || line[i] == '{')
+                    stack.push(line[i]);
+                if (line[i] == ')' && stack.pop() == '(') {
+                    if (stack.length == 0) {
+                        parenConsumed = true;
+                        braceConsumed = false;
+                    }
+                }
+                if (line[i] == '}' && stack.pop() == '{') {
+                    if (stack.length == 0 && parenConsumed)
+                        braceConsumed = true;
+                }
+            }
+        }
+        processLine(prevTermLine);
+        for (var i = prevTermStart.line + 1; i < target; ++i)
+            processLine(lines[i]);
+        if (parenConsumed && !braceConsumed)
+            return modeUtils.getIndentForLine(
+                lines[prevTermStart.line]) + tabWidth;
+    } else if (prevTermStart.position > 0) {
+        return prevTermStart.position;
+    }
+    
+    var prevTermIndent = modeUtils.getIndentForLine(
+        lines[prevTermStart.line]);
+    var prevLineIndex = target - 1;
+    while (prevLineIndex >= 0 && lines[prevLineIndex].match(/^\s*$/))
+        prevLineIndex--;
+    if (prevLineIndex < 0)
+        return 0;
+    var prevLine = lines[prevLineIndex];
+    if (binaryOperators.indexOf(prevLine[prevLine.length - 1]))
+        return prevTermIndent + tabWidth;
+
+    return prevTermIndent;
+};
+
 function messageHandler(data) {
     var result;
     if (data.command == 'metadata') {
         result = {shortname: 'js',
                   longname: 'javascript mode',
                   pattern: /[a-zA-Z_0-9]+/,
-                  parens: parens};
+                  parens: openParens + closeParens};
     } else if (data.command == 'highlight') {
-        result = {id: data.id, callback_id: data.callback_id,
-		  range: modeUtils.parseContents(data.contents, modes, symbols)};
+        result = {range: modeUtils.parseContents(
+                      data.contents, modes, symbols)};
+    } else if (data.command == 'indent') {
+        result = {line: data.target,
+                  indent: getIndent(data.lines, data.target)};
     }
+    result.id = data.id;
+    result.callback_id = data.callback_id;
     result.command = data.command;
     self.postMessage(result);
 }

@@ -13,6 +13,8 @@ function Mode(worker) {
 }
 
 Mode.prototype.messageHandler = function(e) {
+    if (e.data.command == 'log')
+        console.log(e.data.text);
     if (e.data.command == 'metadata') {
         this.shortname = e.data.shortname;
         this.longname = e.data.longname;
@@ -27,7 +29,7 @@ Mode.prototype.messageHandler = function(e) {
     } else if (e.data.command == 'indent') {
         var callback = this.callbacks[e.data.callback_id];
         if (callback)
-            callback(e.data.id, e.data.indents);
+            callback(e.data.id, e.data.line, e.data.indent);
     }
 };
 
@@ -43,12 +45,12 @@ Mode.prototype.postMessage = function(message, callback) {
 
 Mode.prototype.askHighlight = function(contents, request_id, callback) {
     this.postMessage(
-        {command:'highlight', id: request_id, contents: contents}, callback);
+        {command: 'highlight', id: request_id, contents: contents}, callback);
 };
 
-Mode.prototype.indentFor = function(lines, start, end, request_id, callback) {
+Mode.prototype.indentFor = function(lines, target, request_id, callback) {
     this.postMessage(
-        {command:'indent', id: request_id, lines: lines, start: start, end: end},
+        {command: 'indent', id: request_id, lines: lines, target: target},
         callback);
 };
 

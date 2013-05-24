@@ -55,17 +55,55 @@ var modes = {
     declaration: declarationMode
 };
 
+var openParens = '[{(';
+var closeParens = ')}]';
+var binaryOperators = '+-*/^&|';
+var parens = openParens + closeParens;
+var tabWidth = 4;
+
+function getIndent(lines, target) {
+    var prevTermStart = modeUtils.getPreviousTerm(
+        lines, target, openParens, closeParens, binaryOperators);
+    if (lines[prevTermStart.line].length == prevTermStart.position) {
+        // previous line ends with open parens.
+        return modeUtils.getIndentForLine(
+            lines[prevTermStart.line]) + tabWidth;
+    }
+
+    if (prevTermStart.position > 0)
+        return prevTermStart.position;
+    
+    var prevTermIndent = modeUtils.getIndentForLine(
+        lines[prevTermStart.line]);
+    var prevLineIndex = target - 1;
+    while (prevLineIndex >= 0 && lines[prevLineIndex].match(/^\s*$/))
+        prevLineIndex--;
+    if (prevLineIndex < 0)
+        return 0;
+    var prevLine = lines[prevLineIndex];
+    self.postMessage({command:'log', text:prevLineIndex});
+    if ((binaryOperators + ":").indexOf(prevLine[prevLine.length - 1]) >= 0)
+        return prevTermIndent + tabWidth;
+
+    return prevTermIndent;
+};
+
 function messageHandler(data) {
     var result;
     if (data.command == 'metadata') {
         result = {shortname: 'py',
                   longname: 'python mode',
                   pattern: /[a-zA-Z_0-9]+/,
-                  parens: '[{()}]'};
+                  parens: openParens + closeParens};
     } else if (data.command == 'highlight') {
-        result = {id: data.id, callback_id: data.callback_id,
-		  range: modeUtils.parseContents(data.contents, modes, symbols)};
+        result = {range: modeUtils.parseContents(
+                      data.contents, modes, symbols)};
+    } else if (data.command == 'indent') {
+        result = {line: data.target,
+                  indent: getIndent(data.lines, data.target)};
     }
+    result.id = data.id;
+    result.callback_id = data.callback_id;
     result.command = data.command;
     self.postMessage(result);
 }
