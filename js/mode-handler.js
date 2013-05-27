@@ -1,4 +1,4 @@
-function Mode(worker) {
+function Mode(modeHandler, worker) {
     this.worker = worker;
     if (this.worker) {
         this.worker.addEventListener('message', this.messageHandler.bind(this));
@@ -10,6 +10,8 @@ function Mode(worker) {
     this.parens = "({[]})";
     this.callbacks = {};
     this.callback_id = 0;
+    _.extend(this, Backbone.Events);
+    this.on('load', function(mode) { modeHandler.trigger('load', mode); });
 }
 
 Mode.prototype.messageHandler = function(e) {
@@ -20,8 +22,7 @@ Mode.prototype.messageHandler = function(e) {
         this.longname = e.data.longname;
         this.pattern = e.data.pattern;
         this.parens = e.data.parens;
-        if (window.onModeLoaded)
-            window.onModeLoaded(this);
+        this.trigger('load', this);
     } else if (e.data.command == 'highlight') {
         var callback = this.callbacks[e.data.callback_id];
         if (callback)
@@ -58,6 +59,7 @@ function ModeHandler(basePath) {
     this.modes = [];
     this.basePath = basePath;
     this.defaultMode = new Mode(null);
+    _.extend(this, Backbone.Events);
 }
 
 ModeHandler.prototype.modeRules = [
@@ -74,7 +76,7 @@ ModeHandler.prototype.getMode = function(filename) {
     for (var i = 0; i < this.modeRules.length; i++) {
         if (this.modeRules[i].pattern.test(filename)) {
             var mode = new Mode(
-                new Worker(this.basePath + this.modeRules[i].mode));
+                this, new Worker(this.basePath + this.modeRules[i].mode));
             this.modes.push({pattern: this.modeRules[i].pattern,
                              mode: mode});
             return mode;

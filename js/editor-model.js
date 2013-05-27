@@ -23,38 +23,32 @@ function isParen(text) {
 function EditorModel(mode) {
     this.idealCaretOffset = null;
     this.selection = null;
-    this.mode = mode;
     this.editingId = {count: 0, lineEditCount: 0};
     this.content = new Content();
     this.location = new Location(this.content, 0, 0);
+    this.setMode(mode);
     this.askHighlight();
     // TODO: this has to be merged into the system clipboard.
     this.killring = [];
     this.editHistory = new EditingHistory();
-    this.modeObservers = [];
 }
 
 EditorModel.prototype.setContents = function(content) {
     this.content = content;
-    this.location = new Location(this.content, 0, 0);
+    this.location.setLocation(new Location(this.content, 0, 0));
     this.askHighlight();
     if (this.view)
         this.view.Reset(this.content);
-};
-
-EditorModel.prototype.addModeObserver = function(observer) {
-    this.modeObservers.push(observer);
-    observer.onModeChanged(this.mode);
 };
 
 EditorModel.prototype.setMode = function(mode) {
     if (this.mode == mode)
         return;
 
+    if (this.mode)
+        this.mode.off('load', this.askHighlight, this);
     this.mode = mode;
-    this.askHighlight();
-    for (var i = 0; i < this.modeObservers.length; i++)
-        this.modeObservers[i].onModeChanged(mode);
+    this.mode.on('load', this.askHighlight, this);
 };
 
 EditorModel.prototype.onHighlighted = function(editingId, range) {
@@ -448,7 +442,7 @@ EditorModel.prototype.deleteRange = function(start, end) {
     this.view.deleteRange(start, end);
 
     var deletedText = this.content.deleteRange(start, end);
-    this.location = start.copy();
+    this.location.setLocation(start);
     if (start.line != end.line)
         this.editingId.lineEditCount++; 
     this.askHighlight();
@@ -465,7 +459,7 @@ EditorModel.prototype.deletePreviousChar = function() {
     var previous = current.copy();
     previous.moveChars(-1);
     var deletedChar = this.content.deleteRange(previous, current);
-    this.location = previous.copy();
+    this.location.setLocation(previous);
     this.editHistory.push(new EditingHistoryEntry('delete', deletedChar, previous, current));
     this.view.deleteRange(previous, current);
     if (current.line != previous.line)

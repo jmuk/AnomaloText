@@ -10,23 +10,29 @@ AppEditor = function(fileHandler) {
     this.editId = fileHandler.editId;
     this.model = new EditorModel(modeHandler.getMode(fileHandler.getName()));
     this.controller = new EditorController(this.model);
-    fileHandler.observers.push(this);
+    fileHandler.on('change', this.updateIndicator, this);
+    fileHandler.on('fileLoad', this.syncFileHandler, this);
     this.updateIndicator();
     // TODO: allow multiple editors in a window.
     this.id = window.editorWindowId;
     this.metadata = new MetadataManager(this.controller, this.model);
+    modeHandler.on('load', this.metadata.onModeChanged, this.metadata);
 
     this.controller.registerKeybind(new AppKeybind(this));
     this.menuHandler = new MenuHandler(this);
 };
 
-AppEditor.prototype.onFileLoaded = function(fileHandler) {
-    if (this.fileHandler != fileHandler)
-        this.editId = null;
-    if (this.fileHandler)
-        this.fileHandler.observers.remove(this);
+AppEditor.prototype.setFileHandler = function(fileHandler) {
+    if (this.fileHandler == fileHandler)
+        return;
+    this.editId = null;
+    if (this.fileHandler) {
+        this.fileHandler.off('change', this.updateIndicator, this);
+        this.fileHandler.off('fileLoad', this.syncFileHandler, this);
+    }
     this.fileHandler = fileHandler;
-    this.fileHandler.observers.push(this);
+    this.fileHandler.on('change', this.updateIndicator, this);
+    fileHandler.on('fileLoad', this.syncFileHandler, this);
     this.syncFileHandler();
 };
 
@@ -36,19 +42,19 @@ AppEditor.prototype.recordFileEditId = function() {
 
 AppEditor.prototype.syncFileHandler = function() {
     this.updateIndicator();
-    this.model.setMode(modeHandler.getMode(this.fileHandler.getName()));
-    if (this.editId != this.fileHandler.editId)
-        this.controller.onFileLoaded(this.fileHandler);
-    updateFileList();
-};
-
-AppEditor.prototype.onModeLoaded = function(newMode) {
+    var newMode = modeHandler.getMode(this.fileHandler.getName());
+    this.model.setMode(newMode);
     this.metadata.onModeChanged(newMode);
+    if (this.editId != this.fileHandler.editId)
+        this.controller.onFileLoaded(this.fileHandler.content);
+    updateFileList();
 };
 
 AppEditor.prototype.saveFile = function(fileEntry) {
     this.fileHandler.saveToEntry(fileEntry, (function() {
-        this.model.setMode(modeHandler.getMode(fileHandler.getName()));
+        var newMode = modeHandler.getMode(fileHandler.getName());
+        this.model.setMode(newMode);
+        this.metadata.onModeChanged(newMode);
         this.updateIndicator();
     }).bind(this));
 };
@@ -65,10 +71,6 @@ AppEditor.prototype.openFile = function(fileEntry) {
         });
     }
 };
-
-AppEditor.prototype.onEditChanged = function() {
-    this.updateIndicator();
-}
 
 AppEditor.prototype.updateIndicator = function() {
     var fileName = this.fileHandler.getName();

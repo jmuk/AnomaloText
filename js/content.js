@@ -4,11 +4,7 @@
 function Content(text) {
     text = text || '';
     this.lines = text.split('\n');
-    this.observers = new Observers();
-};
-
-Content.prototype.notifyChange = function() {
-    this.observers.notify('onContentChanged', [this]);
+    _.extend(this, Backbone.Events);
 };
 
 //////////////////////////////////////////////////////////////////
@@ -132,7 +128,7 @@ Content.prototype.deleteRange = function(start, end) {
         deletedLines.pop();
         deletedText += deletedLines.join('\n') + '\n' + endLine;
     }
-    this.notifyChange();
+    this.trigger('change');
     return deletedText;
 };
 
@@ -155,5 +151,5 @@ Content.prototype.insertText = function(text, location) {
         this.lines[location.line] =
             line.slice(0, location.position) + text + line.slice(location.position);
     }
-    this.notifyChange();
+    this.trigger('change');
 };

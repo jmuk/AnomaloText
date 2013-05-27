@@ -4,7 +4,6 @@ function EditorController(model) {
     this.contentArea = document.createElement('div');
     this.contentArea.className = 'content-area';
     this.editor.appendChild(this.contentArea);
-    this.caretObservers = [];
 
     this.model = model;
     this.view = new EditorView(this.contentArea);
@@ -16,21 +15,17 @@ function EditorController(model) {
     this.openParen = null;
     this.closeParen = null;
 
+    this.model.location.on('move', this.updateCaretIndicator, this);
+    this.model.location.on('move', this.view.updateCaretIndicator, this.view);
     this.keybinds = [new DefaultKeybind(model)];
 }
-
-EditorController.prototype.addCaretObserver = function(observer) {
-    this.caretObservers.push(observer);
-    this.updateCaretIndicator();
-};
 
 EditorController.prototype.registerKeybind = function(keybind) {
   this.keybinds.push(keybind);
 };
 
-EditorController.prototype.onFileLoaded = function(fileHandler) {
-    this.model.setContents(fileHandler.content);
-    this.updateCaretIndicator();
+EditorController.prototype.onFileLoaded = function(content) {
+    this.model.setContents(content);
 };
 
 EditorController.prototype.updateHeight = function() {
@@ -39,17 +34,13 @@ EditorController.prototype.updateHeight = function() {
     this.view.updateHeight();
 };
 
-EditorController.prototype.updateCaretIndicator = function() {
+EditorController.prototype.updateCaretIndicator = function(loc) {
     var selection = this.model.getSelection();
-    var loc = this.model.location;
-    for (var i = 0; i < this.caretObservers.length; i++)
-        this.caretObservers[i].onCaretMoved(loc);
     if (selection) {
         this.view.hideCaretIndicator();
     } else {
         var caretPosition = this.view.getCaretPosition(loc);
         this.view.showCaretIndicator();
-        this.view.updateCaretIndicator(loc);
         this.receiverContainer.style.top = caretPosition.top + 'px';
         this.receiverSpacer.style.width = caretPosition.left + 'px';
     }
@@ -80,7 +71,6 @@ EditorController.prototype.keypress = function(ev) {
     this.model.insertText(String.fromCharCode(ev.charCode));
     ev.preventDefault();
     this.receiver.textContent = '';
-    this.updateCaretIndicator();
     return false;
 };
 
@@ -128,7 +118,6 @@ EditorController.prototype.keydown = function(ev) {
         commandText = 'C-' + commandText;
 
     var consumed = this.executeCommand(commandText);
-    this.updateCaretIndicator();
     if (consumed)
         ev.preventDefault();
     this.receiver.textContent = '';
@@ -185,14 +174,12 @@ EditorController.prototype.createEventReceiver = function() {
         this.receiver.innerHTML = '';
         this.view.showCaretIndicator();
         this.model.insertText(ev.data);
-        this.updateCaretIndicator();
     }).bind(this));
     window.addEventListener('mousedown', (function(ev) {
         this.enforceFocus();
         this.mouseSelection = true;
         var loc = this.getLocationInContentArea(ev);
         this.model.startMouseSelection(loc.x, loc.lines);
-        this.updateCaretIndicator();
     }).bind(this));
     window.addEventListener('mousemove', (function(ev) {
         if (!this.mouseSelection)
@@ -208,7 +195,6 @@ EditorController.prototype.createEventReceiver = function() {
         ev.preventDefault();
         var loc = this.getLocationInContentArea(ev);
         this.model.updateMouseSelection(loc.x, loc.lines);
-        this.updateCaretIndicator();
         return false;
     }).bind(this));
     window.addEventListener('mouseup', (function(ev) {
@@ -218,7 +204,6 @@ EditorController.prototype.createEventReceiver = function() {
 
         var loc = this.getLocationInContentArea(ev);
         this.model.moveToPosition(loc.x, loc.lines);
-        this.updateCaretIndicator();
     }).bind(this));
     window.addEventListener('resize', (function(ev) {
         this.view.refreshHeight();
@@ -226,7 +211,6 @@ EditorController.prototype.createEventReceiver = function() {
     this.editor.onscroll = (function(ev) {
         this.model.ensureCaretVisible(
             this.view.getVisibleLines());
-        this.updateCaretIndicator();
     }).bind(this);
     window.addEventListener('focus', this.enforceFocus.bind(this));
     
@@ -236,5 +220,4 @@ EditorController.prototype.createEventReceiver = function() {
     this.receiverContainer = receiverContainer;
     this.receiverSpacer = receiverSpacer;
     this.receiver = receiver;
-    this.updateCaretIndicator();
 };

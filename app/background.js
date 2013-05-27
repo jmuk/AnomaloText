@@ -33,18 +33,15 @@ function switchBufferTo(editor, fileHandlerId) {
         return;
     }
 
-    editor.fileHandler.observers.remove(editor);
-    fileHandler.observers.push(editor);
-    editor.onFileLoaded(fileHandler);
+    editor.setFileHandler(fileHandler);
 };
 
 function openNewFile(fileEntry, editor) {
-    editor.fileHandler.observers.remove(editor);
     for (var k in fileHandlers) {
         var fileHandler = fileHandlers[k];
         if (fileHandler.fileEntry &&
             fileEntry.fullPath == fileHandler.fileEntry.fullPath) {
-            fileHandler.observers.push(editor);
+            editor.setFileHandler(fileHandler);
             fileHandler.setFileEntry(fileEntry);
             return;
         }
@@ -52,7 +49,7 @@ function openNewFile(fileEntry, editor) {
 
     var fileHandler = new FileHandler();
     fileHandlers[fileHandler.id] = fileHandler;
-    fileHandler.observers.push(editor);
+    editor.setFileHandler(fileHandler);
     fileHandler.setFileEntry(fileEntry);
 };
 

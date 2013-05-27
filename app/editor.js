@@ -1,9 +1,5 @@
 var editor = null;
 
-function onModeLoaded(mode) {
-    editor.onModeLoaded(mode);
-}
-
 function updateFileList() {
     chrome.runtime.getBackgroundPage(function(bgPage) {
         bgPage.updateFileList(window.fileListUpdated);

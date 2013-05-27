@@ -1,6 +1,7 @@
 // Location holds a Location in an editing text, which means 'line' and 'position'.
 
 function Location(content, line, position) {
+    _.extend(this, Backbone.Events);
     this.content = content;
     this.setLine(line);
     this.setPosition(position);
@@ -20,17 +21,22 @@ Location.prototype.lessThan = function(other) {
 };
 
 Location.prototype.setLocation = function(newLocation) {
+    this.content = newLocation.content;
     this.line = newLocation.line;
     this.setPosition(newLocation.position);
 };
 
 Location.prototype.setLine = function(line) {
-    this.line = Math.max(Math.min(line, this.content.getLines()), 0);
+    var newLine = Math.max(Math.min(line, this.content.getLines()), 0);
+    this.line = newLine;
+    this.trigger('move', this);
 };
 
 Location.prototype.setPosition = function(position) {
     var maxPosition = this.content.getCharsInLine(this.line);
-    this.position = Math.max(Math.min(position, maxPosition), 0);
+    var newPosition = Math.max(Math.min(position, maxPosition), 0);
+    this.position = newPosition;
+    this.trigger('move', this);
 };
 
 Location.prototype.copy = function() {
@@ -54,4 +60,5 @@ Location.prototype.moveChars = function(chars) {
             this.position = this.content.getCharsInLine(this.line);
         }
     }
+    this.trigger('move', this);
 };

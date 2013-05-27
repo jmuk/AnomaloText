@@ -7,13 +7,13 @@ FileHandler = function() {
     this.fileEntry = null;
     this.onWriting = false;
     this.content = new Content();
-    this.content.observers.push(this);
+    this.content.on('change', this.onContentChanged, this);
     this.id = fileHandlerIds++;
 
     this.edited = false;
     this.editId = 0;
     this.lastEdited = 0;
-    this.observers = new Observers();
+    _.extend(this, Backbone.Events);
 };
 
 FileHandler.prototype.getName = function() {
@@ -45,7 +45,7 @@ FileHandler.prototype.setFileEntry = function(fileEntry) {
                 return;
             fileHandler.content.lines = reader.result.split('\n');
             fileHandler.editId++;
-            fileHandler.observers.notify('onFileLoaded', [fileHandler]);
+            fileHandler.trigger('fileLoad');
         };
         reader.readAsText(file, 'utf-8');
     });
@@ -100,15 +100,15 @@ FileHandler.prototype.maybeSave = function(lastEdited) {
 
     this.save((function(succeeded) {
         this.edited = false;
-        this.observers.notify('onEditChanged');
+        this.trigger('change');
     }).bind(this));
 };
 
-FileHandler.prototype.onContentChanged = function(content) {
+FileHandler.prototype.onContentChanged = function() {
     var lastEdited = (new Date()).getTime();
     this.lastEdited = lastEdited;
     this.edited = true;
-    this.observers.notify('onEditChanged');
+    this.trigger('change');
     window.setTimeout((function() { this.maybeSave(lastEdited); }).bind(this),
                       500 /* msec */);
 };
