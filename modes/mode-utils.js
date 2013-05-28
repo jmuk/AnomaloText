@@ -113,7 +113,7 @@ var modeUtils = {
                     counter++;
                 }
             }
-            if (counter == 0 && !line.match(/^\s+$/)) {
+            if (counter == 0 && !line.match(/^\s*$/)) {
                 var prevLine = lines[index - 1].replace(/\s*$/, "");
                 if (binaryOperators.indexOf(prevLine[prevLine.length - 1]) < 0)
                     return {line:index, position: 0};

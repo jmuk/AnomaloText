@@ -81,7 +81,6 @@ function getIndent(lines, target) {
     if (prevLineIndex < 0)
         return 0;
     var prevLine = lines[prevLineIndex];
-    self.postMessage({command:'log', text:prevLineIndex});
     if ((binaryOperators + ":").indexOf(prevLine[prevLine.length - 1]) >= 0)
         return prevTermIndent + tabWidth;
 
