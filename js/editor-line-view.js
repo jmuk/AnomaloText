@@ -1,32 +1,20 @@
 function EditorLineView(line) {
     this.length = line.length;
     this.tokens = Token.getTokens(line, null);
+    this.container = document.createElement('div');
     this.linebreak = document.createElement('br');
+    this.addElementsToContents();
 }
 
-EditorLineView.prototype.addElementsToContents = function(container) {
+EditorLineView.prototype.addElementsToContents = function() {
+    this.container.innerHTML = '';
     for (var i = 0; i < this.tokens.length; i++) {
         var token = this.tokens[i];
         if (!token.element)
             token.createElement();
-        container.appendChild(this.tokens[i].element);
+        this.container.appendChild(this.tokens[i].element);
     }
-    container.appendChild(this.linebreak);
-};
-
-EditorLineView.prototype.addElementsBefore = function(nextline) {
-    if (this.linebreak.parentNode)
-        return;
-
-    var nextElement = (nextline.tokens.length == 0) ? nextline.linebreak : nextline.tokens[0].element;
-    var parent = nextElement.parentNode;
-    for (var i = 0; i < this.tokens.length; i++) {
-        var token = this.tokens[i];
-        if (!token.element)
-            token.createElement();
-        parent.insertBefore(token.element, nextElement);
-    }
-    parent.insertBefore(this.linebreak, nextElement);
+    this.container.appendChild(this.linebreak);
 };
 
 EditorLineView.prototype.applyHighlight = function(ranges) {
@@ -78,19 +66,20 @@ EditorLineView.prototype.applyHighlight = function(ranges) {
 };
 
 EditorLineView.prototype.getOffset = function(position) {
-    var offset = 0;
     for (var i = 0; i < this.tokens.length; i++) {
         var token = this.tokens[i];
         if (position < token.length) {
-            offset += token.element.offsetWidth /
+            return token.element.offsetLeft + token.element.offsetWidth /
                 token.length * position;
-            break;
-        } else {
-            offset += token.element.offsetWidth;
         }
         position -= token.length;
     }
-    return offset;
+    if (this.tokens.length > 0) {
+        var lastToken = this.tokens[this.tokens.length - 1];
+        return lastToken.element.offsetLeft + lastToken.element.offsetWidth;
+    }
+
+    return 0;
 };
 
 EditorLineView.prototype.getPosition = function(offset) {
@@ -153,11 +142,11 @@ EditorLineView.prototype.deleteAllChars = function() {
     for (var i = 0; i < this.tokens.length; i++) {
         var token = this.tokens[i];
         if (token.element)
-            token.element.parentNode.removeChild(token.element);
+            this.container.removeChild(token.element);
     }
-    if (this.linebreak.parentNode) {
-        this.linebreak.parentNode.removeChild(this.linebreak);
-    }
+    this.container.removeChild(this.linebreak);
+    if (this.container.parentNode)
+        this.container.parentNode.removeChild(this.container);
     this.tokens = [];
     this.length = 0;
 };
@@ -189,7 +178,7 @@ EditorLineView.prototype.deleteCharsIn = function(start, end) {
         var token = this.tokens[startIndex];
         var newText = token.text.slice(0, startOffset) + token.text.slice(endOffset);
         if (newText == "") {
-            token.element.parentNode.removeChild(token.element);
+            this.container.removeChild(token.element);
             this.tokens = this.tokens.slice(0, startIndex).concat(
                 this.tokens.slice(endIndex + 1));
         } else {
@@ -216,7 +205,7 @@ EditorLineView.prototype.deleteCharsIn = function(start, end) {
     }
     for (var i = removeStart; i <= removeEnd; i++) {
         var token = this.tokens[i];
-        token.element.parentNode.removeChild(token.element);
+        this.container.removeChild(token.element);
     }
     this.tokens = this.tokens.slice(0, removeStart).concat(this.tokens.slice(removeEnd + 1));
 };
@@ -231,11 +220,10 @@ EditorLineView.prototype.insertTextAt = function(chunk, position) {
     if (this.tokens.length == 0) {
         this.length = chunk.length;
         this.tokens = Token.getTokens(chunk, null);
-        var parent = this.linebreak.parentNode;
         for (var i = 0; i < this.tokens.length; i++) {
             var token = this.tokens[i];
             token.createElement();
-            parent.insertBefore(token.element, this.linebreak);
+            this.container.insertBefore(token.element, this.linebreak);
         }
         return;
     }
@@ -254,12 +242,11 @@ EditorLineView.prototype.insertTextAt = function(chunk, position) {
             } else {
                 var nextElement = (i < this.tokens.length - 1) ?
                     this.tokens[i + 1].element : this.linebreak;
-                var parent = nextElement.parentNode;
-                parent.removeChild(token.element);
+                this.container.removeChild(token.element);
                 for (var j = 0; j < newTokens.length; j++) {
                     var newToken = newTokens[j];
                     newToken.createElement();
-                    parent.insertBefore(newToken.element, nextElement);
+                    this.container.insertBefore(newToken.element, nextElement);
                 }
                 this.tokens = this.tokens.slice(0, i).concat(newTokens, this.tokens.slice(i + 1));
             }
@@ -276,17 +263,22 @@ EditorLineView.prototype.insertTextAt = function(chunk, position) {
         p += token.length;
     }
     var newTokens = Token.getTokens(chunk, null);
-    var parent = this.linebreak.parentNode;
     for (var i = 0; i < newTokens.length; i++) {
         newTokens[i].createElement();
-        parent.insertBefore(newTokens[i].element, this.linebreak);
+        this.container.insertBefore(newTokens[i].element, this.linebreak);
     }
     this.tokens = this.tokens.concat(newTokens);
 };
 
 EditorLineView.prototype.concat = function(another) {
-    this.linebreak.parentNode.removeChild(this.linebreak);
-    this.linebreak = another.linebreak;
+    for (var i = 0; i < another.tokens.length; i++) {
+        var token = another.tokens[i];
+        if (token.element) {
+            another.container.removeChild(token.element);
+            this.container.insertBefore(token.element, this.linebreak);
+        }
+    }
+    another.container.parentNode.removeChild(another.container);
     this.tokens = this.tokens.concat(another.tokens);
     this.length += another.length;
 };
@@ -294,20 +286,16 @@ EditorLineView.prototype.concat = function(another) {
 EditorLineView.prototype.splitAt = function(position) {
     if (position == 0) {
         var newLine = new EditorLineView('');
-        var nextElement = (this.tokens.length == 0) ?
-            this.linebreak : this.tokens[0].element;
-        nextElement.parentNode.insertBefore(
-            newLine.linebreak, nextElement);
+        this.container.parentNode.insertBefore(
+            newLine.container, this.container);
         return [newLine, this];
     } else if (position == this.length) {
         var newLine = new EditorLineView('');
-        var container = this.linebreak.parentNode;
-        var nextElement = (container.lastChild == this.linebreak) ?
-            null : this.linebreak.nextSibling;
-        if (nextElement)
-            container.insertBefore(newLine.linebreak, nextElement);
+        var container = this.container.parentNode;
+        if (container.lastChild == this.container)
+            container.appendChild(newLine.container);
         else
-            container.appendChild(newLine.linebreak);
+            container.insertBefore(newLine.container, this.container.nextSibling);
         return [this, newLine];
     }
 
@@ -333,22 +321,31 @@ EditorLineView.prototype.splitAt = function(position) {
             token.text.slice(0, remaining), token.type);
         var newToken2 = new Token(
             token.text.slice(remaining), token.type);
-        var container = this.linebreak.parentNode;
         var nextElement = (next.length != 0) ?
             next[0].element : this.linebreak;
         replaceElements([token], [newToken1, newToken2],
-                        container, nextElement);
+                        this.container, nextElement);
         prev.push(newToken1);
         next.unshift(newToken2);
         this.tokens = prev;
         newLine.tokens = next;
     }
+
+    for (var i = 0; i < newLine.tokens.length; i++) {
+        var token = newLine.tokens[i];
+        if (token.element) {
+            token.element.parentNode.removeChild(token.element);
+            newLine.container.insertBefore(token.element, newLine.linebreak);
+        }
+    }
     newLine.length = this.length - position;
-    newLine.linebreak = this.linebreak;
     this.length = position;
-    this.linebreak = document.createElement('br');
-    var container = newLine.tokens[0].element.parentNode;
-    container.insertBefore(this.linebreak, newLine.tokens[0].element);
+    var container = this.container.parentNode;
+    if (container.lastChild == this.container) {
+        container.appendChild(newLine.container);
+    } else {
+        container.insertBefore(newLine.container, this.container.nextSibling);
+    }
     return [this, newLine];
 };
 

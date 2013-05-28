@@ -60,13 +60,13 @@ EditorView.prototype.applyHighlight = function(ranges) {
 
 EditorView.prototype.addElementsToContents = function() {
     for (var i = 0; i < this.lines.length; i++) {
-        this.lines[i].addElementsToContents(this.contentArea);
+        this.contentArea.appendChild(this.lines[i].container);
     }
     this.updateHeight();
 };
 
 EditorView.prototype.updateHeight = function() {
-    this.lineHeight = Math.floor(this.contentArea.offsetHeight / this.lines.length);
+    this.lineHeight = Math.ceil(this.contentArea.offsetHeight / this.lines.length);
     this.caretIndicator.style.height = this.lineHeight;
 };
 
@@ -106,9 +106,21 @@ EditorView.prototype.showCaretIndicator = function() {
 };
 
 EditorView.prototype.updateCaretIndicator = function(loc) {
-    var top = loc.line * this.lineHeight;
-    var left = this.getOffset(loc);
-    var bottom = top + this.lineHeight;
+    var line = this.lines[loc.line];
+
+    var top, bottom, left;
+    if (line.tokens.length == 0) {
+        top = line.container.offsetTop;
+        bottom = top + line.container.offsetHeight;
+        left = 0;
+    } else {
+        left = line.getOffset(loc.position);
+        var element = line.getElementAt(loc.position) ||
+            line.tokens[line.tokens.length - 1].element;
+        top = element.offsetTop;
+        bottom = top + element.offsetHeight;
+    }
+
     var screenBottom =
         this.editor.scrollTop + this.editor.clientHeight;
     if (top < this.editor.scrollTop)
@@ -154,7 +166,9 @@ EditorView.prototype.insertText = function(text, loc) {
         var newLinesMiddle = [];
         for (var i = 1; i < lines.length - 1; i++) {
             var newLine = new EditorLineView(lines[i]);
-            newLine.addElementsBefore(this.lines[loc.line + 1]);
+            this.contentArea.insertBefore(
+                newLine.container,
+                this.lines[loc.line + 1].container);
             newLinesMiddle.push(newLine);
         }
         newLines[1].insertTextAt(lines[lines.length - 1], 0);
