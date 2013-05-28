@@ -86,14 +86,15 @@ EditorLineView.prototype.getPosition = function(offset) {
     var position = 0;
     for (var i = 0; i < this.tokens.length; i++) {
         var token = this.tokens[i];
-        if (offset <= token.element.offsetWidth) {
-            position += Math.floor(
-                offset / token.element.offsetWidth * token.length);
-            break;
+        console.log(offset + ", " + token.element.offsetLeft + ", " + token.element.offsetWidth);
+        if (offset >= token.element.offsetLeft &&
+            offset <= token.element.offsetLeft + token.element.offsetWidth) {
+            return position + Math.round(
+                (offset - token.element.offsetLeft) /
+                    token.element.offsetWidth * token.length);
         } else {
             position += token.length;
         }
-        offset -= token.element.offsetWidth;
     }
     return position;
 };
